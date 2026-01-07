@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Camera Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #video { width: 400px; height: 300px; border: 2px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>📷 Quick Camera Test</h1>
+    
+    <div class="status" id="status">Click Start Camera to test</div>
+    
+    <video id="video" autoplay muted></video>
+    
+    <div>
+        <button onclick="startCamera()">Start Camera</button>
+        <button onclick="stopCamera()">Stop Camera</button>
+    </div>
+
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        async function startCamera() {
+            try {
+                updateStatus('Requesting camera...', 'info');
+                
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 400, height: 300, facingMode: 'user' },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                updateStatus('Camera active!', 'success');
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                updateStatus(`Camera error: ${error.name}`, 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                updateStatus('Camera stopped', 'info');
+            }
+        }
+
+        // Check support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            updateStatus('Camera not supported in this browser', 'error');
+        }
+    </script>
+</body>
+</html>

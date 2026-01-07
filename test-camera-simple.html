@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Camera Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        #video { width: 100%; max-width: 640px; height: 480px; border: 2px solid #ddd; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; }
+        button:disabled { background: #ccc; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .debug { background: #f8f9fa; color: #495057; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📷 Simple Camera Test</h1>
+        
+        <div class="status info" id="status">Status: Ready to test camera</div>
+        
+        <video id="video" autoplay muted></video>
+        
+        <div>
+            <button id="startBtn" onclick="startCamera()">🚀 Start Camera</button>
+            <button id="stopBtn" onclick="stopCamera()" disabled>⏹️ Stop Camera</button>
+            <button id="captureBtn" onclick="capturePhoto()" disabled>📸 Capture Photo</button>
+        </div>
+
+        <div id="photos"></div>
+        
+        <div class="debug" id="debug"></div>
+        
+        <div class="status info">
+            <h3>Debug Info:</h3>
+            <div id="debugInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const status = document.getElementById('status');
+        const debug = document.getElementById('debug');
+        const debugInfo = document.getElementById('debugInfo');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            debug.innerHTML += `[${timestamp}] ${message}<br>`;
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            status.textContent = `Status: ${message}`;
+            status.className = `status ${type}`;
+        }
+
+        function updateDebugInfo() {
+            debugInfo.innerHTML = `
+                <strong>Browser Info:</strong><br>
+                User Agent: ${navigator.userAgent}<br>
+                Platform: ${navigator.platform}<br>
+                <br>
+                <strong>Media Devices:</strong><br>
+                mediaDevices: ${!!navigator.mediaDevices}<br>
+                getUserMedia: ${!!navigator.mediaDevices?.getUserMedia}<br>
+                <br>
+                <strong>Camera State:</strong><br>
+                Stream: ${!!stream}<br>
+                Video Ready: ${!!video.srcObject}<br>
+                Video Width: ${video.videoWidth || 'N/A'}<br>
+                Video Height: ${video.videoHeight || 'N/A'}<br>
+                <br>
+                <strong>Permissions:</strong><br>
+                Camera Permission: ${navigator.permissions ? 'Supported' : 'Not Supported'}<br>
+            `;
+        }
+
+        async function startCamera() {
+            try {
+                log('🚀 Starting camera...');
+                updateStatus('Requesting camera access...', 'info');
+                
+                // Check support
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera not supported');
+                }
+
+                // Check permissions if available
+                if (navigator.permissions) {
+                    try {
+                        const permission = await navigator.permissions.query({ name: 'camera' });
+                        log(`📷 Camera permission status: ${permission.state}`);
+                    } catch (e) {
+                        log(`⚠️ Could not check permission: ${e.message}`);
+                    }
+                }
+
+                // Request camera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640, min: 320 },
+                        height: { ideal: 480, min: 240 },
+                        facingMode: 'user'
+                    },
+                    audio: false
+                });
+
+                log('✅ Camera stream obtained');
+                
+                // Set video source
+                video.srcObject = stream;
+                
+                // Wait for video to load
+                video.onloadedmetadata = () => {
+                    log(`📹 Video loaded: ${video.videoWidth}x${video.videoHeight}`);
+                    updateStatus('Camera active!', 'success');
+                    
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    captureBtn.disabled = false;
+                };
+
+                video.onerror = (e) => {
+                    log(`❌ Video error: ${e.message}`);
+                    updateStatus('Video error occurred', 'error');
+                };
+
+                video.oncanplay = () => {
+                    log('🎬 Video can play');
+                };
+
+                updateDebugInfo();
+                
+            } catch (error) {
+                log(`❌ Camera error: ${error.name} - ${error.message}`);
+                
+                let errorMessage = 'Cannot access camera';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Camera permission denied. Please allow camera access.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No camera found on this device.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'Camera is being used by another application.';
+                } else if (error.name === 'OverconstrainedError') {
+                    errorMessage = 'Camera does not meet requirements.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = 'Browser does not support camera.';
+                }
+                
+                updateStatus(errorMessage, 'error');
+                updateDebugInfo();
+            }
+        }
+
+        function stopCamera() {
+            log('🛑 Stopping camera...');
+            
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    log(`🔄 Stopping track: ${track.kind} - ${track.label}`);
+                    track.stop();
+                });
+                stream = null;
+                video.srcObject = null;
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                captureBtn.disabled = true;
+                
+                updateStatus('Camera stopped', 'info');
+                updateDebugInfo();
+            }
+        }
+
+        function capturePhoto() {
+            if (!stream || !video.srcObject) {
+                updateStatus('Camera not active', 'error');
+                return;
+            }
+
+            try {
+                log('📸 Capturing photo...');
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                
+                log(`📐 Canvas: ${canvas.width}x${canvas.height}`);
+                
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const url = URL.createObjectURL(blob);
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.style.width = '100px';
+                        img.style.height = '100px';
+                        img.style.margin = '5px';
+                        img.style.border = '2px solid #007bff';
+                        img.style.borderRadius = '5px';
+                        
+                        document.getElementById('photos').appendChild(img);
+                        updateStatus('Photo captured!', 'success');
+                        log('✅ Photo captured successfully');
+                    } else {
+                        updateStatus('Failed to capture photo', 'error');
+                        log('❌ Failed to create blob');
+                    }
+                }, 'image/jpeg', 0.8);
+                
+            } catch (error) {
+                log(`❌ Capture error: ${error.message}`);
+                updateStatus('Failed to capture photo', 'error');
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            log('🌐 Page loaded');
+            updateDebugInfo();
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                updateStatus('Camera not supported in this browser', 'error');
+                startBtn.disabled = true;
+            }
+        };
+
+        // Cleanup
+        window.onbeforeunload = function() {
+            if (stream) {
+                log('🧹 Cleaning up camera');
+                stopCamera();
+            }
+        };
+
+        // Update debug info periodically
+        setInterval(updateDebugInfo, 2000);
+    </script>
+</body>
+</html>

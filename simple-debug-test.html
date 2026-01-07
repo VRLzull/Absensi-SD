@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; white-space: pre-wrap; border-left: 3px solid #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Simple Debug Test</h1>
+        <p>Test untuk menemukan masalah 401 error</p>
+        
+        <div>
+            <button onclick="testServer()">1. Test Server</button>
+            <button onclick="testLogin()">2. Test Login</button>
+            <button onclick="testAPI()">3. Test API</button>
+            <button onclick="clearResults()">Clear</button>
+        </div>
+        
+        <div id="results"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let logMessages = [];
+        let currentToken = null;
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logMessages.push(logEntry);
+            console.log(logEntry);
+            
+            document.getElementById('log').innerHTML = 
+                `<div class="log">${logMessages.join('\n')}</div>`;
+        }
+
+        function showResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testServer() {
+            try {
+                log('Testing server connection...');
+                const response = await fetch('http://localhost:5000/api/health');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Server OK: ' + data.message);
+                    showResult('✅ Server is running', 'success');
+                } else {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+            } catch (error) {
+                log('❌ Server test failed: ' + error.message);
+                showResult('❌ Server test failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testLogin() {
+            try {
+                log('Testing login...');
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+
+                const data = await response.json();
+                log('Login response: ' + response.status);
+
+                if (response.ok) {
+                    currentToken = data.token;
+                    localStorage.setItem('token', data.token);
+                    log('✅ Login successful, token stored');
+                    showResult('✅ Login successful! Token stored in localStorage', 'success');
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (error) {
+                log('❌ Login failed: ' + error.message);
+                showResult('❌ Login failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testAPI() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    showResult('❌ No token available. Please login first.', 'error');
+                    return;
+                }
+
+                log('Testing employees API with token...');
+                const response = await fetch('http://localhost:5000/api/employees', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log('API response: ' + response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ API call successful!');
+                    showResult(`✅ API call successful! Found ${data.data.length} employees`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(`API failed: ${response.status} - ${errorData.error}`);
+                }
+            } catch (error) {
+                log('❌ API test failed: ' + error.message);
+                showResult('❌ API test failed: ' + error.message, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            logMessages = [];
+            document.getElementById('log').innerHTML = '';
+            log('Results cleared');
+        }
+
+        // Auto-test server on load
+        window.onload = function() {
+            log('Page loaded, starting tests...');
+            testServer();
+        };
+    </script>
+</body>
+</html>

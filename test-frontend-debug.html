@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .info { color: blue; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Frontend Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>1️⃣ Login Test</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2️⃣ Token Storage Test</h2>
+        <button onclick="checkTokenStorage()">Check Token Storage</button>
+        <div id="tokenResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3️⃣ API Call Test</h2>
+        <button onclick="testAPI()">Test API Call</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4️⃣ Debug Info</h2>
+        <button onclick="showDebugInfo()">Show Debug Info</button>
+        <div id="debugResult"></div>
+    </div>
+
+    <script>
+        let currentToken = null;
+        let debugLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLog.push(logEntry);
+            console.log(logEntry);
+            
+            // Update debug result
+            document.getElementById('debugResult').innerHTML = 
+                `<div class="log">${debugLog.join('\n')}</div>`;
+        }
+
+        async function testLogin() {
+            try {
+                log('🔐 Starting login test...');
+                
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                log(`📡 Login response status: ${response.status}`);
+                log(`📡 Login response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+
+                const data = await response.json();
+                log(`📡 Login response data: ${JSON.stringify(data, null, 2)}`);
+
+                if (response.ok) {
+                    currentToken = data.token;
+                    log('✅ Login successful, token received');
+                    log(`Token length: ${data.token.length}`);
+                    log(`Token preview: ${data.token.substring(0, 50)}...`);
+                    
+                    // Store in localStorage (like React app does)
+                    localStorage.setItem('token', data.token);
+                    log('💾 Token stored in localStorage');
+                    
+                    document.getElementById('loginResult').innerHTML = `
+                        <div class="success">
+                            ✅ Login successful!<br>
+                            Token: ${data.token.substring(0, 50)}...<br>
+                            User: ${data.user.full_name}<br>
+                            Token stored in localStorage
+                        </div>
+                    `;
+                } else {
+                    log(`❌ Login failed: ${data.error}`);
+                    document.getElementById('loginResult').innerHTML = `
+                        <div class="error">❌ Login failed: ${data.error}</div>
+                    `;
+                }
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`);
+                document.getElementById('loginResult').innerHTML = `
+                    <div class="error">❌ Error: ${error.message}</div>
+                `);
+            }
+        }
+
+        function checkTokenStorage() {
+            log('🔍 Checking token storage...');
+            
+            const token = localStorage.getItem('token');
+            log(`localStorage token: ${token ? 'Found' : 'Not found'}`);
+            
+            if (token) {
+                log(`Token length: ${token.length}`);
+                log(`Token preview: ${token.substring(0, 50)}...`);
+                log(`Token in localStorage matches current: ${token === currentToken ? 'Yes' : 'No'}`);
+                
+                document.getElementById('tokenResult').innerHTML = `
+                    <div class="success">
+                        ✅ Token found in localStorage<br>
+                        Length: ${token.length}<br>
+                        Preview: ${token.substring(0, 50)}...<br>
+                        Matches current: ${token === currentToken ? 'Yes' : 'No'}
+                    </div>
+                `;
+            } else {
+                log('❌ No token in localStorage');
+                document.getElementById('tokenResult').innerHTML = `
+                    <div class="error">❌ No token found in localStorage</div>
+                `;
+            }
+        }
+
+        async function testAPI() {
+            try {
+                log('👥 Testing API call...');
+                
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    log('❌ No token available for API test');
+                    document.getElementById('apiResult').innerHTML = `
+                        <div class="error">❌ No token available. Please login first.</div>
+                    `;
+                    return;
+                }
+
+                log(`Using token: ${token.substring(0, 50)}...`);
+                log('Making request to /api/employees...');
+                
+                const response = await fetch('http://localhost:5000/api/employees', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`📡 API response status: ${response.status}`);
+                log(`📡 API response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`📡 API response data: ${JSON.stringify(data, null, 2)}`);
+                    log(`✅ API call successful, found ${data.data.length} employees`);
+                    
+                    document.getElementById('apiResult').innerHTML = `
+                        <div class="success">
+                            ✅ API call successful!<br>
+                            Status: ${response.status}<br>
+                            Employees found: ${data.data.length}<br>
+                            First employee: ${data.data[0]?.full_name || 'None'}
+                        </div>
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    log(`❌ API call failed: ${response.status} - ${JSON.stringify(errorData, null, 2)}`);
+                    
+                    document.getElementById('apiResult').innerHTML = `
+                        <div class="error">
+                            ❌ API call failed<br>
+                            Status: ${response.status}<br>
+                            Error: ${errorData.error || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`❌ API test error: ${error.message}`);
+                document.getElementById('apiResult').innerHTML = `
+                    <div class="error">❌ Error: ${error.message}</div>
+                `);
+            }
+        }
+
+        function showDebugInfo() {
+            log('🔍 Showing debug info...');
+            
+            const debugInfo = {
+                'Current Token': currentToken ? `${currentToken.substring(0, 50)}...` : 'None',
+                'localStorage Token': localStorage.getItem('token') ? 'Found' : 'Not found',
+                'Token Match': currentToken === localStorage.getItem('token') ? 'Yes' : 'No',
+                'User Agent': navigator.userAgent,
+                'Current URL': window.location.href,
+                'Timestamp': new Date().toISOString()
+            };
+            
+            log(`Debug Info: ${JSON.stringify(debugInfo, null, 2)}`);
+            
+            document.getElementById('debugResult').innerHTML = `
+                <div class="log">
+                    <strong>Debug Info:</strong>
+                    ${Object.entries(debugInfo).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                    
+                    <strong>Log History:</strong>
+                    ${debugLog.join('\n')}
+                </div>
+            `;
+        }
+
+        // Auto-check on page load
+        window.onload = function() {
+            log('🚀 Page loaded, checking initial state...');
+            checkTokenStorage();
+        };
+    </script>
+</body>
+</html>

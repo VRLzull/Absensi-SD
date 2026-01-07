@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #video { width: 100%; max-width: 640px; height: 480px; border: 2px solid #ddd; border-radius: 8px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; font-weight: bold; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Kamera</h1>
+        <div class="status info" id="status">Status: Siap untuk menguji kamera</div>
+        
+        <video id="video" autoplay playsinline muted></video>
+        
+        <div>
+            <button id="startBtn" onclick="startCamera()">🚀 Mulai Kamera</button>
+            <button id="stopBtn" onclick="stopCamera()" disabled>⏹️ Stop Kamera</button>
+            <button id="captureBtn" onclick="capturePhoto()" disabled>📸 Ambil Foto</button>
+        </div>
+
+        <div id="photos"></div>
+        
+        <div class="status info">
+            <h3>Instruksi:</h3>
+            <ol>
+                <li>Klik "Mulai Kamera"</li>
+                <li>Izinkan akses kamera</li>
+                <li>Klik "Ambil Foto"</li>
+                <li>Klik "Stop Kamera"</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const status = document.getElementById('status');
+
+        function updateStatus(message, type = 'info') {
+            status.textContent = `Status: ${message}`;
+            status.className = `status ${type}`;
+        }
+
+        async function startCamera() {
+            try {
+                updateStatus('Meminta izin kamera...', 'info');
+                
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Kamera tidak didukung');
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                captureBtn.disabled = false;
+                
+                updateStatus('Kamera berhasil diaktifkan!', 'success');
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                let errorMessage = 'Tidak dapat mengakses kamera';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Izin kamera ditolak';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'Tidak ada kamera';
+                }
+                
+                updateStatus(errorMessage, 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                captureBtn.disabled = true;
+                
+                updateStatus('Kamera berhasil dihentikan', 'info');
+            }
+        }
+
+        function capturePhoto() {
+            if (!stream) {
+                updateStatus('Kamera tidak aktif', 'error');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            context.drawImage(video, 0, 0);
+            
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.margin = '5px';
+                    img.style.border = '2px solid #007bff';
+                    img.style.borderRadius = '5px';
+                    
+                    document.getElementById('photos').appendChild(img);
+                    updateStatus('Foto berhasil diambil!', 'success');
+                }
+            }, 'image/jpeg', 0.8);
+        }
+
+        window.onload = function() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                updateStatus('Browser tidak mendukung kamera', 'error');
+                startBtn.disabled = true;
+            }
+        };
+
+        window.onbeforeunload = function() {
+            if (stream) stopCamera();
+        };
+    </script>
+</body>
+</html>
