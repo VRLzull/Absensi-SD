@@ -19,9 +19,26 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 const faceRecognitionService = require('./services/faceRecognitionService');
 
 const app = express();
+
+// Ensure upload directories exist
+const uploadDirs = [
+  'uploads',
+  'uploads/profiles',
+  'uploads/face-recognition',
+  'uploads/attendance'
+];
+uploadDirs.forEach(dir => {
+  const fullPath = path.join(__dirname, dir);
+  if (!fs.existsSync(fullPath)) {
+    fs.mkdirSync(fullPath, { recursive: true });
+    console.log(`📁 Created directory: ${dir}`);
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
