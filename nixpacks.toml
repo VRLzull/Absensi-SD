@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ["...", "cairo", "pango", "pkg-config", "libjpeg", "giflib", "librsvg"]
+
+[phases.build]
+dependsOn = ["setup"]
+cmds = ["npm install", "cd client && npm install && npm run build"]
