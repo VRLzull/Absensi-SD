@@ -7,12 +7,15 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon server.js",
     "client": "cd client && npm run dev",
-    "build:client": "cd client && npm install && npm run build",
-    "install-all": "npm install && cd client && npm install",
+    "build:client": "cd client && npm run build",
+    "postinstall": "npm install --prefix client",
     "start": "node server.js",
     "build": "npm run build:client",
     "setup": "npm run install-all && echo Setup completed!",
     "test-api": "curl -s http://localhost:5000/api/health || echo Server not running"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -26,26 +29,12 @@
     "face-api.js": "^0.22.2",
     "file-saver": "^2.0.5",
     "helmet": "^7.2.0",
-    "html2canvas": "^1.4.1",
-    "jimp": "^0.22.10",
-    "jsonwebtoken": "^9.0.2",
-    "jspdf": "^3.0.2",
-    "jspdf-autotable": "^5.0.2",
-    "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.14.3",
-    "node-fetch": "^3.3.2",
-    "xlsx": "^0.18.5"
+    "jsonwebtoken": "^9.0.0",
+    "mysql2": "^3.2.0",
+    "nodemon": "^2.0.22",
+    "path": "^0.12.7"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "nodemon": "^3.0.2"
-  },
-  "keywords": [
-    "absensi",
-    "face-recognition",
-    "express",
-    "react"
-  ],
-  "author": "Your Name",
-  "license": "MIT"
+    "concurrently": "^8.0.1"
+  }
 }
