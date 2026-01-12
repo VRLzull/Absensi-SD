@@ -1,5 +1,12 @@
 [phases.setup]
 nixPkgs = ["...", "cairo", "pango", "pkg-config", "libjpeg", "giflib", "librsvg"]
 
+[phases.install]
+cmds = ["npm install"]
+
 [phases.build]
-cmds = ["npm install", "npm run build"]
+dependsOn = ["install"]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node server.js"
