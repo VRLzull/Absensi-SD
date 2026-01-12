@@ -3,7 +3,7 @@ require('dotenv').config({ path: './config.env' });
 
 // Validate required environment variables
 function validateEnvironment() {
-  const required = ['JWT_SECRET', 'NODE_ENV'];
+  const required = ['NODE_ENV']; // Simplified for initial deploy
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {

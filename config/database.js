@@ -1,11 +1,11 @@
 const mysql = require('mysql2/promise');
 
 const dbConfig = {
-  host: 'localhost',
-  port: 3306,
-  user: 'root',           // Laragon default user
-  password: '',           // Laragon default (empty password)
-  database: 'absensi',
+  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+  port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
+  user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'absensi',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
