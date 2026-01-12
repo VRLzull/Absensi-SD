@@ -149,10 +149,30 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// 404 handler for API
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API Route not found' });
 });
+
+// Serve Frontend Static Files in Production
+if (process.env.NODE_ENV === 'production') {
+  // Path to the frontend build folder
+  const frontendPath = path.join(__dirname, 'client/dist');
+  
+  // Serve static files from the React app
+  app.use(express.static(frontendPath));
+
+  // The "catchall" handler: for any request that doesn't
+  // match one above, send back React's index.html file.
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+} else {
+  // Simple 404 for non-production
+  app.use('*', (req, res) => {
+    res.status(404).json({ error: 'Route not found' });
+  });
+}
 
 // Initialize face recognition service on server start
 async function initializeServices() {

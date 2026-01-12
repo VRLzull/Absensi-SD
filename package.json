@@ -7,9 +7,10 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon server.js",
     "client": "cd client && npm run dev",
-    "build:client": "cd client && npm run build",
+    "build:client": "cd client && npm install && npm run build",
     "install-all": "npm install && cd client && npm install",
     "start": "node server.js",
+    "build": "npm run build:client",
     "setup": "npm run install-all && echo Setup completed!",
     "test-api": "curl -s http://localhost:5000/api/health || echo Server not running"
   },
