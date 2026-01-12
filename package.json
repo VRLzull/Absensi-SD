@@ -1,15 +1,10 @@
 {
   "name": "absensi-face-recognition",
   "version": "1.0.0",
-  "description": "Sistem Absensi dengan Face Recognition",
   "main": "server.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon server.js",
-    "client": "cd client && npm run dev",
-    "build:client": "cd client && npm run build",
     "start": "node server.js",
-    "build": "npm run build:client"
+    "build": "cd client && npm install && npm run build"
   },
   "engines": {
     "node": "20.x"
@@ -29,8 +24,5 @@
     "jsonwebtoken": "^9.0.0",
     "mysql2": "^3.2.0",
     "nodemon": "^2.0.22"
-  },
-  "devDependencies": {
-    "concurrently": "^8.0.1"
   }
 }
