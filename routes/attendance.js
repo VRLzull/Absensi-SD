@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { verifyToken } = require('../middleware/auth');
 const faceRecognitionService = require('../services/faceRecognitionService');
+const whatsappService = require('../services/whatsappService');
 
 const router = express.Router();
 
@@ -86,20 +87,73 @@ router.get('/', verifyToken, async (req, res) => {
 
     const total = countResult[0].total;
 
-    // Get attendance data with pagination
-    const [rows] = await pool.execute(`
+    // emp_id/NIS = student_id (SD), fallback id. Tidak pakai e.employee_id agar kompatibel tabel tanpa kolom itu.
+    const sqlFull = `
       SELECT 
         a.*,
-        e.employee_id as emp_id,
+        COALESCE(e.student_id, CAST(e.id AS CHAR)) as emp_id,
+        COALESCE(e.student_id, CAST(e.id AS CHAR)) as student_id,
         e.full_name,
         e.position,
-        e.department
+        e.department,
+        e.grade,
+        e.classroom
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       ${whereClause}
       ORDER BY a.check_in DESC
       LIMIT ? OFFSET ?
-    `, [...params, parseInt(limit), offset]);
+    `;
+    const sqlSd = `
+      SELECT 
+        a.*,
+        COALESCE(e.student_id, CAST(e.id AS CHAR)) as emp_id,
+        COALESCE(e.student_id, CAST(e.id AS CHAR)) as student_id,
+        e.full_name,
+        e.grade,
+        e.classroom
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      ${whereClause}
+      ORDER BY a.check_in DESC
+      LIMIT ? OFFSET ?
+    `;
+    const sqlMinimal = `
+      SELECT 
+        a.*,
+        CAST(e.id AS CHAR) as emp_id,
+        CAST(e.id AS CHAR) as student_id,
+        e.full_name
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      ${whereClause}
+      ORDER BY a.check_in DESC
+      LIMIT ? OFFSET ?
+    `;
+    const execParams = [...params, parseInt(limit), offset];
+    let rows;
+    try {
+      [rows] = await pool.execute(sqlFull, execParams);
+    } catch (err) {
+      if (err.code === 'ER_BAD_FIELD_ERROR') {
+        try {
+          [rows] = await pool.execute(sqlSd, execParams);
+          rows.forEach(r => { r.position = r.position ?? null; r.department = r.department ?? null; });
+        } catch (err2) {
+          if (err2.code === 'ER_BAD_FIELD_ERROR') {
+            [rows] = await pool.execute(sqlMinimal, execParams);
+            rows.forEach(r => {
+              r.position = r.position ?? null;
+              r.department = r.department ?? null;
+              r.grade = r.grade ?? null;
+              r.classroom = r.classroom ?? null;
+            });
+          } else throw err2;
+        }
+      } else {
+        throw err;
+      }
+    }
 
     res.json({
       success: true,
@@ -114,9 +168,12 @@ router.get('/', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Get attendance error:', error);
-    res.status(500).json({ 
-      error: 'Terjadi kesalahan pada server' 
-    });
+    const payload = { error: 'Terjadi kesalahan pada server' };
+    if (process.env.NODE_ENV !== 'production') {
+      payload.debug = error.message;
+      if (error.sqlMessage) payload.sqlMessage = error.sqlMessage;
+    }
+    res.status(500).json(payload);
   }
 });
 
@@ -124,35 +181,43 @@ router.get('/', verifyToken, async (req, res) => {
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-
-    const [rows] = await pool.execute(`
-      SELECT 
-        a.*,
-        e.employee_id as emp_id,
-        e.full_name,
-        e.position,
-        e.department
-      FROM attendance a
-      JOIN employees e ON a.employee_id = e.id
-      WHERE a.id = ?
-    `, [id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ 
-        error: 'Data absensi tidak ditemukan' 
-      });
+    const sqlFull = `
+      SELECT a.*, COALESCE(e.student_id, CAST(e.id AS CHAR)) as emp_id, COALESCE(e.student_id, CAST(e.id AS CHAR)) as student_id,
+      e.full_name, e.position, e.department, e.grade, e.classroom
+      FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.id = ?
+    `;
+    const sqlSd = `
+      SELECT a.*, COALESCE(e.student_id, CAST(e.id AS CHAR)) as emp_id, COALESCE(e.student_id, CAST(e.id AS CHAR)) as student_id,
+      e.full_name, e.grade, e.classroom
+      FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.id = ?
+    `;
+    const sqlMinimal = `
+      SELECT a.*, CAST(e.id AS CHAR) as emp_id, CAST(e.id AS CHAR) as student_id, e.full_name
+      FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.id = ?
+    `;
+    let rows;
+    try {
+      [rows] = await pool.execute(sqlFull, [id]);
+    } catch (err) {
+      if (err.code === 'ER_BAD_FIELD_ERROR') {
+        try {
+          [rows] = await pool.execute(sqlSd, [id]);
+          rows.forEach(r => { r.position = r.position ?? null; r.department = r.department ?? null; });
+        } catch (err2) {
+          if (err2.code === 'ER_BAD_FIELD_ERROR') {
+            [rows] = await pool.execute(sqlMinimal, [id]);
+            rows.forEach(r => { r.position = r.position ?? null; r.department = r.department ?? null; r.grade = r.grade ?? null; r.classroom = r.classroom ?? null; });
+          } else throw err2;
+        }
+      } else throw err;
     }
-
-    res.json({
-      success: true,
-      data: rows[0]
-    });
-
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Data absensi tidak ditemukan' });
+    }
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
     console.error('Get attendance by ID error:', error);
-    res.status(500).json({ 
-      error: 'Terjadi kesalahan pada server' 
-    });
+    res.status(500).json({ error: 'Terjadi kesalahan pada server' });
   }
 });
 
@@ -196,9 +261,9 @@ router.post('/check-in', upload.single('face_image'), [
     // Extract face descriptor from uploaded image
     const inputDescriptor = await faceRecognitionService.extractFaceDescriptor(faceImage.path);
 
-    // Find employee by face recognition (universal search)
+    // Find employee by face recognition (SD: grade/classroom)
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.position, e.department
+      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.grade, e.classroom
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -233,14 +298,14 @@ router.post('/check-in', upload.single('face_image'), [
           bestMatch = {
             employee_id: face.employee_id,
             employee_name: face.full_name,
-            position: face.position,
-            department: face.department,
+            position: face.classroom ?? null,
+            department: face.grade != null ? String(face.grade) : null,
             similarity: sim,
             confidence: sim
           };
         }
-        if (Date.now() - startAt > 30000) {
-          console.log('⏰ [check-in] overall comparison timeout reached');
+        if (Date.now() - startAt > 60000) {
+          console.log('⏰ [check-in] overall comparison timeout reached (60s)');
           break;
         }
       } catch (e) {
@@ -251,18 +316,18 @@ router.post('/check-in', upload.single('face_image'), [
     if (!bestMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Wajah tidak dikenali. Silakan daftar terlebih dahulu.',
+        message: 'Wajah tidak dikenali atau tidak cukup mirip. Pastikan pencahayaan cukup, tidak menggunakan masker/kacamata hitam, dan wajah menghadap kamera.',
         data: {
           verified: false,
           similarity: highestSimilarity,
-          threshold: 0.6
+          threshold: 0.55
         }
       });
     }
 
     // Get employee details for attendance
     const [employee] = await pool.execute(`
-      SELECT id FROM employees WHERE id = ? AND is_active = TRUE
+      SELECT id, full_name, parent_phone FROM employees WHERE id = ? AND is_active = TRUE
     `, [bestMatch.employee_id]);
 
     if (employee.length === 0) {
@@ -280,7 +345,7 @@ router.post('/check-in', upload.single('face_image'), [
 
     if (existingCheckIn.length > 0) {
       return res.status(400).json({ 
-        error: 'Pegawai sudah melakukan check-in hari ini' 
+        error: 'Siswa sudah melakukan check-in hari ini' 
       });
     }
 
@@ -306,6 +371,16 @@ router.post('/check-in', upload.single('face_image'), [
       status,
       notes
     ]);
+
+    // Send WhatsApp notification
+    const studentName = employee[0].full_name;
+    const parentPhone = employee[0].parent_phone;
+    const dateStr = now.toLocaleDateString('id-ID');
+    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    // Fire and forget notification (don't block response)
+    whatsappService.sendAttendanceNotification(studentName, parentPhone, status, timeStr, dateStr)
+      .catch(err => console.error('Failed to send WhatsApp notification:', err));
 
     res.status(201).json({
       success: true,
@@ -403,9 +478,9 @@ router.post('/check-out', upload.single('face_image'), [
     // Extract face descriptor from uploaded image
     const inputDescriptor = await faceRecognitionService.extractFaceDescriptor(faceImage.path);
 
-    // Find employee by face recognition (universal search)
+    // Find employee by face recognition (SD: grade/classroom)
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.position, e.department
+      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.grade, e.classroom
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -440,8 +515,8 @@ router.post('/check-out', upload.single('face_image'), [
           bestMatch = {
             employee_id: face.employee_id,
             employee_name: face.full_name,
-            position: face.position,
-            department: face.department,
+            position: face.classroom ?? null,
+            department: face.grade != null ? String(face.grade) : null,
             similarity: sim,
             confidence: sim
           };
@@ -708,7 +783,7 @@ router.post('/flutter-check-in', [
     }
 
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.position, e.department
+      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.grade, e.classroom
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -762,8 +837,8 @@ router.post('/flutter-check-in', [
         id: result.insertId,
         employee_id: bestMatch.employee_id,
         employee_name: bestMatch.employee_name,
-        position: bestMatch.position,
-        department: bestMatch.department,
+        position: bestMatch.classroom ?? null,
+        department: bestMatch.grade != null ? String(bestMatch.grade) : null,
         check_in: now,
         status,
         location,
@@ -810,7 +885,7 @@ router.post('/flutter-check-out', [
     }
 
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.position, e.department
+      SELECT ef.employee_id, ef.face_descriptor, e.id, e.full_name, e.grade, e.classroom
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -860,8 +935,8 @@ router.post('/flutter-check-out', [
       data: {
         employee_id: bestMatch.employee_id,
         employee_name: bestMatch.employee_name,
-        position: bestMatch.position,
-        department: bestMatch.department,
+        position: bestMatch.classroom ?? null,
+        department: bestMatch.grade != null ? String(bestMatch.grade) : null,
         check_in: checkInRecord[0].check_in,
         check_out: now,
         location,

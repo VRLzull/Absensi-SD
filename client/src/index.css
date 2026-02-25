@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+@media print {
+  /* Hide elements marked with no-print */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Specific Layout classes */
+  nav.no-print, header.no-print {
+    display: none !important;
+  }
+
+  /* Reset main content styles */
+  .print-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    flex-basis: 100% !important;
+    flex-grow: 1 !important;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    background-color: white !important;
+    overflow: visible !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* Ensure body and html are white and full height */
+  body, html, #root {
+    background-color: white !important;
+    height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure table fits */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important; /* Smaller font for printing */
+  }
+  
+  th, td {
+    border: 1px solid #000 !important; /* Ensure borders are visible */
+    padding: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide MUI Paper shadow/background */
+  .MuiPaper-root {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Force landscape if possible (chrome support) */
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+}

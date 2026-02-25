@@ -1,0 +1,59 @@
+erDiagram
+    admin_users {
+        int id PK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        varchar role
+        boolean is_active
+    }
+
+    employees {
+        int id PK
+        varchar employee_id UK
+        varchar full_name
+        varchar email
+        varchar phone
+        varchar position
+        varchar department
+        enum gender
+        date hire_date
+        boolean is_active
+    }
+
+    employee_faces {
+        int id PK
+        int employee_id FK
+        longtext face_descriptor
+        varchar face_image_path
+        boolean is_primary
+    }
+
+    attendance {
+        int id PK
+        int employee_id FK
+        datetime check_in
+        datetime check_out
+        varchar check_in_image
+        varchar status
+        text notes
+    }
+
+    holidays {
+        int id PK
+        date date UK
+        varchar name
+        enum type
+    }
+
+    system_settings {
+        int id PK
+        varchar setting_key UK
+        text setting_value
+        varchar category
+    }
+
+    %% Relationships
+    employees ||--o{ employee_faces : "has_biometric"
+    employees ||--o{ attendance : "logs_attendance"

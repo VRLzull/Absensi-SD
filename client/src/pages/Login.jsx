@@ -70,10 +70,10 @@ const Login = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: '#f8fafc',
+        background: '#078085ff',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'center', 
         padding: 2,
       }}
     >

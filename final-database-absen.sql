@@ -16,8 +16,8 @@
 
 
 -- Dumping database structure for ljn_db
-CREATE DATABASE IF NOT EXISTS `absensi` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
-USE `absensi`;
+CREATE DATABASE IF NOT EXISTS `absen_sd` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+USE `absen_sd`;
 
 -- Dumping structure for table ljn_db.admin_users
 CREATE TABLE IF NOT EXISTS `admin_users` (

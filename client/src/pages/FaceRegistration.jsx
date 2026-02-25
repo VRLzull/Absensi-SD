@@ -41,9 +41,9 @@ import {
 import { useTheme as useThemeContext } from '../contexts/ThemeContext';
 
 const FaceRegistration = () => {
-  const [employees, setEmployees] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [faceRegistrationOpen, setFaceRegistrationOpen] = useState(false);
   const [capturedFaces, setCapturedFaces] = useState([]);
   const [cameraActive, setCameraActive] = useState(false);
@@ -77,7 +77,7 @@ const FaceRegistration = () => {
     stopCamera();
     setFaceRegistrationOpen(false);
     setCapturedFaces([]);
-    setSelectedEmployee(null);
+    setSelectedStudent(null);
   };
 
   // Debug camera state
@@ -91,10 +91,10 @@ const FaceRegistration = () => {
   }, [cameraActive, stream]);
 
   useEffect(() => {
-    loadEmployees();
+    loadStudents();
   }, []);
 
-  const loadEmployees = async () => {
+  const loadStudents = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -111,25 +111,25 @@ const FaceRegistration = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Gagal memuat data pegawai');
+        throw new Error('Gagal memuat data siswa');
       }
 
       const result = await response.json();
       if (result.success) {
-        setEmployees(result.data);
+        setStudents(result.data);
       } else {
-        showSnackbar('Gagal memuat data pegawai', 'error');
+        showSnackbar('Gagal memuat data siswa', 'error');
       }
     } catch (error) {
-      console.error('Error loading employees:', error);
-      showSnackbar('Gagal memuat data pegawai', 'error');
+      console.error('Error loading students:', error);
+      showSnackbar('Gagal memuat data siswa', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFaceRegistration = (employee) => {
-    setSelectedEmployee(employee);
+  const handleFaceRegistration = (student) => {
+    setSelectedStudent(student);
     setFaceRegistrationOpen(true);
     setCapturedFaces([]);
   };
@@ -198,7 +198,7 @@ const FaceRegistration = () => {
     setLoading(true);
     try {
       console.log('💾 Saving faces to database...');
-      console.log('👤 Employee:', selectedEmployee);
+      console.log('👤 Student:', selectedStudent);
       console.log('📸 Faces count:', capturedFaces.length);
       
       // Get authentication token
@@ -209,11 +209,11 @@ const FaceRegistration = () => {
 
       // Convert captured faces to FormData
       const formData = new FormData();
-      formData.append('employee_id', selectedEmployee.employee_id);
+      formData.append('student_id', selectedStudent.student_id);
       
       // Add each face image
       capturedFaces.forEach((face, index) => {
-        formData.append(`face_images`, face.blob, `face_${index + 1}.jpg`);
+        formData.append(`face_images`, face.blob, `student_${selectedStudent.student_id}_${index + 1}.jpg`);
       });
 
       console.log('📤 Sending data to server...');
@@ -240,10 +240,10 @@ const FaceRegistration = () => {
         setFaceRegistrationOpen(false);
         stopCamera();
         setCapturedFaces([]);
-        setSelectedEmployee(null);
+        setSelectedStudent(null);
         
-        // Reload employees to get updated data from database
-        loadEmployees();
+        // Reload students to get updated data from database
+        loadStudents();
       } else {
         throw new Error(result.message || 'Gagal menyimpan foto wajah');
       }
@@ -256,14 +256,14 @@ const FaceRegistration = () => {
     }
   };
 
-  const handleDeleteFaces = async (employee) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus semua foto wajah ${employee.full_name}?`)) {
+  const handleDeleteFaces = async (student) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus semua foto wajah ${student.full_name}?`)) {
       try {
         // TODO: Implement actual API call to delete face data
-        // For now, just reload employees to get updated data from database
+        // For now, just reload students to get updated data from database
         
         showSnackbar('Foto wajah berhasil dihapus', 'success');
-        loadEmployees();
+        loadStudents();
       } catch (error) {
         showSnackbar('Gagal menghapus foto wajah', 'error');
       }
@@ -286,8 +286,8 @@ const FaceRegistration = () => {
     return faceCount > 0 ? 'Terdaftar' : 'Belum Terdaftar';
   };
 
-  const registeredCount = employees.filter(emp => emp.face_count > 0).length;
-  const totalCount = employees.length;
+  const registeredCount = students.filter(emp => emp.face_count > 0).length;
+  const totalCount = students.length;
   const registrationRate = totalCount > 0 ? (registeredCount / totalCount) * 100 : 0;
 
   return (
@@ -299,7 +299,7 @@ const FaceRegistration = () => {
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
-          onClick={loadEmployees}
+          onClick={loadStudents}
           disabled={loading}
         >
           Refresh
@@ -315,7 +315,7 @@ const FaceRegistration = () => {
                 {totalCount}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Total Pegawai
+                Total Siswa
               </Typography>
             </CardContent>
           </Card>
@@ -369,7 +369,7 @@ const FaceRegistration = () => {
               Progress Pendaftaran Wajah
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {registeredCount} dari {totalCount} pegawai
+              {registeredCount} dari {totalCount} siswa
             </Typography>
           </Box>
           <LinearProgress 
@@ -380,13 +380,13 @@ const FaceRegistration = () => {
         </CardContent>
       </Card>
 
-      {/* Employees Table */}
+      {/* Students Table */}
       <TableContainer component={Paper} sx={{ borderRadius: 2, backgroundColor: colors.card, border: `1px solid ${colors.border}` }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: mode === 'dark' ? '#1f2937' : 'grey.50' }}>
-              <TableCell>Pegawai</TableCell>
-              <TableCell>Departemen</TableCell>
+              <TableCell>Siswa</TableCell>
+              <TableCell>Kelas</TableCell>
               <TableCell>Status Wajah</TableCell>
               <TableCell>Jumlah Foto</TableCell>
               <TableCell>Terakhir Update</TableCell>
@@ -401,40 +401,42 @@ const FaceRegistration = () => {
                   <CircularProgress />
                 </TableCell>
               </TableRow>
-            ) : employees.length === 0 ? (
+            ) : students.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
-                    Belum ada data pegawai
+                    Belum ada data siswa
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => (
-                <TableRow key={employee.id} hover>
+              students.map((student) => (
+                <TableRow key={student.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ width: 32, height: 32 }}>
-                        {employee.full_name.charAt(0)}
+                        {student.full_name.charAt(0)}
                       </Avatar>
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {employee.full_name}
+                          {student.full_name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {employee.employee_id}
+                          NIS: {student.student_id}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{employee.department}</Typography>
+                    <Typography variant="body2">
+                      {student.grade} - {student.classroom}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      icon={employee.face_count > 0 ? <CheckIcon /> : <ErrorIcon />}
-                      label={getFaceStatusText(employee.face_count)}
-                      color={getFaceStatusColor(employee.face_count)}
+                      icon={student.face_count > 0 ? <CheckIcon /> : <ErrorIcon />}
+                      label={getFaceStatusText(student.face_count)}
+                      color={getFaceStatusColor(student.face_count)}
                       size="small"
                       sx={{ borderRadius: 1 }}
                     />
@@ -443,19 +445,19 @@ const FaceRegistration = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <FaceIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       <Typography variant="body2">
-                        {employee.face_count} foto
+                        {student.face_count} foto
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {employee.updated_at ? new Date(employee.updated_at).toLocaleDateString('id-ID') : '-'}
+                      {student.updated_at ? new Date(student.updated_at).toLocaleDateString('id-ID') : '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={employee.is_active ? 'Aktif' : 'Tidak Aktif'}
-                      color={employee.is_active ? 'success' : 'error'}
+                      label={student.is_active ? 'Aktif' : 'Tidak Aktif'}
+                      color={student.is_active ? 'success' : 'error'}
                       size="small"
                       sx={{ borderRadius: 1 }}
                     />
@@ -465,18 +467,18 @@ const FaceRegistration = () => {
                       <Tooltip title="Pendaftaran Wajah">
                         <IconButton
                           size="small"
-                          onClick={() => handleFaceRegistration(employee)}
+                          onClick={() => handleFaceRegistration(student)}
                           sx={{ color: 'primary.main' }}
                         >
                           <CameraIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       
-                      {employee.face_count > 0 && (
+                      {student.face_count > 0 && (
                         <Tooltip title="Hapus Foto Wajah">
                           <IconButton
                             size="small"
-                            onClick={() => handleDeleteFaces(employee)}
+                            onClick={() => handleDeleteFaces(student)}
                             sx={{ color: 'error.main' }}
                           >
                             <DeleteIcon fontSize="small" />
@@ -500,12 +502,12 @@ const FaceRegistration = () => {
         fullWidth
       >
         <DialogTitle>
-          Pendaftaran Wajah - {selectedEmployee?.full_name}
+          Pendaftaran Wajah - {selectedStudent?.full_name}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 3 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Ambil foto wajah pegawai untuk sistem pengenalan wajah. Minimal 3 foto untuk akurasi yang baik.
+              Ambil foto wajah siswa untuk sistem pengenalan wajah. Minimal 3 foto untuk akurasi yang baik.
             </Typography>
             
             <Grid container spacing={3}>
@@ -610,39 +612,49 @@ const FaceRegistration = () => {
                         overflow: 'hidden',
                       }}
                     >
-                      <img
-                        src={face.url}
-                        alt="Face"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      <img src={face.url} alt="Face" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <IconButton
                         size="small"
-                        onClick={() => removeFace(face.id)}
                         sx={{
                           position: 'absolute',
-                          top: -5,
-                          right: -5,
-                          backgroundColor: 'error.main',
+                          top: 0,
+                          right: 0,
+                          backgroundColor: 'rgba(244, 67, 54, 0.8)',
                           color: 'white',
-                          width: 20,
-                          height: 20,
-                          '&:hover': { backgroundColor: 'error.dark' },
+                          '&:hover': { backgroundColor: 'rgb(244, 67, 54)' },
+                          padding: '2px',
                         }}
+                        onClick={() => removeFace(face.id)}
                       >
-                        <DeleteIcon sx={{ fontSize: 12 }} />
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
+                    </Box>
+                  ))}
+                  
+                  {[...Array(Math.max(0, 3 - capturedFaces.length))].map((_, i) => (
+                    <Box
+                      key={`placeholder-${i}`}
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        border: '2px dashed',
+                        borderColor: 'grey.400',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'grey.50',
+                      }}
+                    >
+                      <FaceIcon sx={{ color: 'grey.400' }} />
                     </Box>
                   ))}
                 </Box>
                 
-                <Alert 
-                  severity={capturedFaces.length >= 3 ? 'success' : 'info'}
-                  sx={{ mb: 2 }}
-                >
-                  {capturedFaces.length >= 3 
-                    ? 'Foto wajah sudah mencukupi untuk pendaftaran'
-                    : `Masih diperlukan ${3 - capturedFaces.length} foto lagi`
-                  }
+                <Alert severity={capturedFaces.length < 3 ? 'info' : 'success'} sx={{ mt: 2 }}>
+                  {capturedFaces.length < 3 
+                    ? `Ambil setidaknya ${3 - capturedFaces.length} foto lagi.`
+                    : 'Foto cukup! Anda bisa menyimpan pendaftaran sekarang.'}
                 </Alert>
                 
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -650,18 +662,13 @@ const FaceRegistration = () => {
             </Grid>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button 
-            onClick={handleCloseDialog}
-            disabled={loading}
-          >
-            Batal
-          </Button>
+        <DialogActions sx={{ p: 3, borderTop: `1px solid ${colors.border}` }}>
+          <Button onClick={handleCloseDialog}>Batal</Button>
           <Button
             variant="contained"
             onClick={handleSaveFaces}
             disabled={capturedFaces.length < 3 || loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <CheckIcon />}
+            startIcon={loading ? <CircularProgress size={20} /> : <CheckIcon />}
           >
             Simpan Pendaftaran
           </Button>

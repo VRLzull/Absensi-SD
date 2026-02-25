@@ -47,17 +47,17 @@ import {
 
 import { useTheme as useThemeContext } from '../contexts/ThemeContext';
 
-const Employees = () => {
-  const [employees, setEmployees] = useState([]);
+const Students = () => {
+  const [students, setStudents] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   // Face registration states
   const [faceRegistrationOpen, setFaceRegistrationOpen] = useState(false);
-  const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [currentStudent, setCurrentStudent] = useState(null);
   const [capturedFaces, setCapturedFaces] = useState([]);
   const [cameraActive, setCameraActive] = useState(false);
   const [stream, setStream] = useState(null);
@@ -68,19 +68,18 @@ const Employees = () => {
   
   // Form states
   const [formData, setFormData] = useState({
-    employeeId: '',
+    studentId: '',
     name: '',
-    email: '',
-    password: '',
-    department: '',
-    position: '',
+    grade: '',
+    classroom: '',
     phone: '',
+    parentPhone: '',
     gender: '',
     address: '',
   });
 
-  const departments = ['IT', 'HR', 'Finance', 'Marketing', 'Sales', 'Operations'];
-  const positions = ['Manager', 'Supervisor', 'Staff', 'Senior Staff', 'Coordinator'];
+  const grades = [1, 2, 3, 4, 5, 6];
+  const classrooms = ['A', 'B']; // SD: 2 rombel per kelas (1A, 1B, 2A, 2B, ...)
   const { colors, mode } = useThemeContext();
   const cardStyle = {
     borderRadius: 6,
@@ -90,67 +89,66 @@ const Employees = () => {
   };
 
   useEffect(() => {
-    loadEmployees();
+    loadStudents();
   }, []);
 
-  const loadEmployees = async () => {
+  const loadStudents = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         showSnackbar('Token autentikasi tidak ditemukan', 'error');
+        setLoading(false);
         return;
       }
 
       const response = await fetch('http://localhost:5000/api/employees', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Accept': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Gagal memuat data pegawai');
+        throw new Error('Gagal memuat data siswa');
       }
 
       const result = await response.json();
       if (result.success) {
-        setEmployees(result.data);
+        setStudents(result.data);
       } else {
-        showSnackbar('Gagal memuat data pegawai', 'error');
+        showSnackbar(result.message || 'Gagal memuat data siswa', 'error');
       }
     } catch (error) {
-      console.error('Error loading employees:', error);
-      showSnackbar('Gagal memuat data pegawai', 'error');
+      console.error('Error loading students:', error);
+      showSnackbar('Gagal memuat data siswa', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenDialog = (employee = null) => {
-    if (employee) {
-      setEditingEmployee(employee);
+  const handleOpenDialog = (student = null) => {
+    if (student) {
+      setEditingStudent(student);
       setFormData({
-        employeeId: employee.employee_id,
-        name: employee.full_name,
-        email: employee.email,
-        password: '',
-        department: employee.department,
-        position: employee.position,
-        phone: employee.phone || '',
-        gender: employee.gender || '',
-        address: employee.address || '',
+        studentId: student.student_id || '',
+        name: student.full_name || '',
+        grade: student.grade ?? '',
+        classroom: student.classroom ?? '',
+        phone: student.phone || '',
+        parentPhone: student.parent_phone || '',
+        gender: student.gender || '',
+        address: student.address || '',
       });
     } else {
-      setEditingEmployee(null);
+      setEditingStudent(null);
       setFormData({
-        employeeId: '',
+        studentId: '',
         name: '',
-        email: '',
-        password: '',
-        department: '',
-        position: '',
+        grade: '',
+        classroom: '',
         phone: '',
+        parentPhone: '',
         gender: '',
         address: '',
       });
@@ -160,15 +158,14 @@ const Employees = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingEmployee(null);
+    setEditingStudent(null);
     setFormData({
-      employeeId: '',
+      studentId: '',
       name: '',
-      email: '',
-      password: '',
-      department: '',
-      position: '',
+      grade: '',
+      classroom: '',
       phone: '',
+      parentPhone: '',
       gender: '',
       address: '',
     });
@@ -185,75 +182,75 @@ const Employees = () => {
         return;
       }
 
-      const employeeData = {
-        employee_id: formData.employeeId,
+      const studentData = {
+        student_id: formData.studentId,
         full_name: formData.name,
-        email: formData.email,
+        grade: formData.grade,
+        classroom: formData.classroom,
         phone: formData.phone,
-        position: formData.position,
-        department: formData.department,
+        parent_phone: formData.parentPhone,
         gender: formData.gender,
         address: formData.address,
         hire_date: new Date().toISOString().split('T')[0]
       };
 
-      if (editingEmployee) {
-        // Update employee
-        const response = await fetch(`http://localhost:5000/api/employees/${editingEmployee.id}`, {
+      if (editingStudent) {
+        // Update student
+        const response = await fetch(`http://localhost:5000/api/employees/${editingStudent.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(employeeData)
+          body: JSON.stringify(studentData)
         });
 
         if (!response.ok) {
-          throw new Error('Gagal mengupdate pegawai');
+          throw new Error('Gagal mengupdate siswa');
         }
 
         const result = await response.json();
         if (result.success) {
-          showSnackbar('Pegawai berhasil diperbarui', 'success');
-          loadEmployees(); // Reload data
+          showSnackbar('Siswa berhasil diperbarui', 'success');
+          loadStudents(); // Reload data
         } else {
-          showSnackbar('Gagal mengupdate pegawai', 'error');
+          showSnackbar('Gagal mengupdate siswa', 'error');
         }
       } else {
-        // Add new employee
+        // Add new student
         const response = await fetch('http://localhost:5000/api/employees', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(employeeData)
+          body: JSON.stringify(studentData)
         });
 
         if (!response.ok) {
-          throw new Error('Gagal menambahkan pegawai');
+          throw new Error('Gagal menambahkan siswa');
         }
 
         const result = await response.json();
         if (result.success) {
-          showSnackbar('Pegawai berhasil ditambahkan', 'success');
-          loadEmployees(); // Reload data
+          showSnackbar('Siswa berhasil ditambahkan', 'success');
+          loadStudents(); // Reload data
         } else {
-          showSnackbar('Gagal menambahkan pegawai', 'error');
+          showSnackbar('Gagal menambahkan siswa', 'error');
         }
       }
       
       handleCloseDialog();
     } catch (error) {
-      console.error('Error saving employee:', error);
-      showSnackbar('Gagal menyimpan data pegawai', 'error');
+      console.error('Error saving student:', error);
+      showSnackbar('Gagal menyimpan data siswa', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (employee) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus ${employee.full_name}?`)) {
+  const handleDelete = async (student) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${student.full_name}?`)) {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -261,7 +258,7 @@ const Employees = () => {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/employees/${employee.id}`, {
+        const response = await fetch(`http://localhost:5000/api/employees/${student.id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -270,25 +267,25 @@ const Employees = () => {
         });
 
         if (!response.ok) {
-          throw new Error('Gagal menghapus pegawai');
+          throw new Error('Gagal menghapus siswa');
         }
 
         const result = await response.json();
         if (result.success) {
-          showSnackbar('Pegawai berhasil dihapus', 'success');
-          loadEmployees(); // Reload data
+          showSnackbar('Siswa berhasil dihapus', 'success');
+          loadStudents(); // Reload data
         } else {
-          showSnackbar('Gagal menghapus pegawai', 'error');
+          showSnackbar('Gagal menghapus siswa', 'error');
         }
       } catch (error) {
-        console.error('Error deleting employee:', error);
-        showSnackbar('Gagal menghapus pegawai', 'error');
+        console.error('Error deleting student:', error);
+        showSnackbar('Gagal menghapus siswa', 'error');
       }
     }
   };
 
-  const handleFaceRegistration = (employee) => {
-    setCurrentEmployee(employee);
+  const handleFaceRegistration = (student) => {
+    setCurrentStudent(student);
     setFaceRegistrationOpen(true);
     setCapturedFaces([]);
   };
@@ -377,9 +374,8 @@ const Employees = () => {
       formData.append('face_image', dataURLtoBlob(base64Image), 'face.jpg');
       formData.append('face_descriptor', faceDescriptor);
 
-      const response = await fetch(`http://localhost:5000/api/employees/${currentEmployee.id}/face`, {
-        method: 'POST',
-        headers: {
+      const response = await fetch(`http://localhost:5000/api/employees/${currentStudent.id}/face`, {
+        method: 'POST',        headers: {
           'Authorization': `Bearer ${token}`
         },
         body: formData
@@ -394,7 +390,7 @@ const Employees = () => {
         showSnackbar('Pendaftaran wajah berhasil disimpan', 'success');
         setFaceRegistrationOpen(false);
         stopCamera();
-        loadEmployees(); // Reload data to update face registration status
+        loadStudents(); // Reload data to update face registration status
       } else {
         showSnackbar('Gagal menyimpan pendaftaran wajah', 'error');
       }
@@ -423,10 +419,11 @@ const Employees = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  const filteredEmployees = employees.filter(employee =>
-    employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.department.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudents = students.filter(student =>
+    student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (student.grade && student.grade.toString().includes(searchTerm)) ||
+    (student.classroom && student.classroom.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getGenderColor = (gender) => {
@@ -441,7 +438,7 @@ const Employees = () => {
     <Box sx={{ color: colors.textPrimary }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          Data Pegawai
+          Data Siswa
         </Typography>
         <Button
           variant="contained"
@@ -449,7 +446,7 @@ const Employees = () => {
           onClick={() => handleOpenDialog()}
           sx={{ borderRadius: 2 }}
         >
-          Tambah Pegawai
+          Tambah Siswa
         </Button>
       </Box>
 
@@ -460,7 +457,7 @@ const Employees = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                placeholder="Cari nama, ID, atau departemen..."
+                placeholder="Cari nama, NIS, kelas, atau rombel..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -474,7 +471,7 @@ const Employees = () => {
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
-                  onClick={loadEmployees}
+                  onClick={loadStudents}
                   disabled={loading}
                 >
                   Refresh
@@ -485,17 +482,16 @@ const Employees = () => {
         </CardContent>
       </Card>
 
-      {/* Employees Table */}
+      {/* Students Table */}
       <TableContainer component={Paper} sx={{ borderRadius: 2, backgroundColor: colors.card, border: `1px solid ${colors.border}` }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: mode === 'dark' ? '#1f2937' : 'grey.50' }}>
-              <TableCell>ID</TableCell>
+              <TableCell>NIS</TableCell>
               <TableCell>Nama</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Departemen</TableCell>
-              <TableCell>Jabatan</TableCell>
-              <TableCell>Telepon</TableCell>
+              <TableCell>Kelas</TableCell>
+              <TableCell>Rombel</TableCell>
+              <TableCell>Telp Ortu</TableCell>
               <TableCell>Gender</TableCell>
               <TableCell>Wajah</TableCell>
               <TableCell>Aksi</TableCell>
@@ -504,101 +500,76 @@ const Employees = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                  <CircularProgress />
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
-            ) : filteredEmployees.length === 0 ? (
+            ) : filteredStudents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">
-                    {searchTerm ? 'Tidak ada pegawai yang ditemukan' : 'Belum ada data pegawai'}
-                  </Typography>
+                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  Tidak ada data siswa
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees.map((employee) => (
-                <TableRow key={employee.id} hover>
+              filteredStudents.map((student) => (
+                <TableRow key={student.id} hover>
+                  <TableCell>{student.student_id}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>{student.full_name}</TableCell>
+                  <TableCell>{student.grade}</TableCell>
+                  <TableCell>{student.classroom}</TableCell>
+                  <TableCell>{student.parent_phone}</TableCell>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {employee.employee_id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar sx={{ width: 32, height: 32 }}>
-                        {employee.full_name.charAt(0)}
-                      </Avatar>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {employee.full_name}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{employee.email}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={employee.department} 
-                      size="small" 
+                    <Chip
+                      label={getGenderText(student.gender)}
+                      size="small"
+                      color={getGenderColor(student.gender)}
                       variant="outlined"
-                      sx={{ borderRadius: 1 }}
                     />
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{employee.position}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{employee.phone}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    {employee.gender && (
+                    {(student.face_count > 0 || student.face_descriptor) ? (
                       <Chip
-                        label={getGenderText(employee.gender)}
+                        icon={<CheckIcon />}
+                        label="Terdaftar"
                         size="small"
-                        color={getGenderColor(employee.gender)}
-                        sx={{ borderRadius: 1 }}
+                        color="success"
+                      />
+                    ) : (
+                      <Chip
+                        icon={<ErrorIcon />}
+                        label="Belum Ada"
+                        size="small"
+                        color="warning"
                       />
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      icon={employee.face_count > 0 ? <CheckIcon /> : <ErrorIcon />}
-                      label={employee.face_count > 0 ? 'Terdaftar' : 'Belum Terdaftar'}
-                      color={employee.face_count > 0 ? 'success' : 'warning'}
-                      size="small"
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Box sx={{ display: 'flex' }}>
+                      <Tooltip title="Registrasi Wajah">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleFaceRegistration(student)}
+                          color="primary"
+                        >
+                          <FaceIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Edit">
                         <IconButton
                           size="small"
-                          onClick={() => handleOpenDialog(employee)}
-                          sx={{ color: 'primary.main' }}
+                          onClick={() => handleOpenDialog(student)}
+                          sx={{ color: 'info.main' }}
                         >
-                          <EditIcon fontSize="small" />
+                          <EditIcon />
                         </IconButton>
                       </Tooltip>
-                      
-                      <Tooltip title="Pendaftaran Wajah">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleFaceRegistration(employee)}
-                          sx={{ color: 'secondary.main' }}
-                        >
-                          <FaceIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      
                       <Tooltip title="Hapus">
                         <IconButton
                           size="small"
-                          onClick={() => handleDelete(employee)}
-                          sx={{ color: 'error.main' }}
+                          onClick={() => handleDelete(student)}
+                          color="error"
                         >
-                          <DeleteIcon fontSize="small" />
+                          <DeleteIcon />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -610,15 +581,10 @@ const Employees = () => {
         </Table>
       </TableContainer>
 
-      {/* Add/Edit Employee Dialog */}
-      <Dialog 
-        open={openDialog} 
-        onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {editingEmployee ? 'Edit Pegawai' : 'Tambah Pegawai Baru'}
+      {/* Add/Edit Student Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ borderBottom: `1px solid ${colors.border}` }}>
+          {editingStudent ? 'Edit Siswa' : 'Tambah Siswa'}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
@@ -626,9 +592,9 @@ const Employees = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="ID Pegawai"
-                  value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  label="NIS (Nomor Induk Siswa)"
+                  value={formData.studentId}
+                  onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                   required
                   sx={{ mb: 2 }}
                 />
@@ -636,7 +602,7 @@ const Employees = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Nama Lengkap"
+                  label="Nama Lengkap Siswa"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -644,53 +610,31 @@ const Employees = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required={!editingEmployee}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Departemen</InputLabel>
+                  <InputLabel>Kelas</InputLabel>
                   <Select
-                    value={formData.department}
-                    label="Departemen"
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    value={formData.grade ?? ''}
+                    label="Kelas"
+                    onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
                     required
                   >
-                    {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                    {grades.map((grade) => (
+                      <MenuItem key={grade} value={grade}>Kelas {grade}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Jabatan</InputLabel>
+                  <InputLabel>Rombel</InputLabel>
                   <Select
-                    value={formData.position}
-                    label="Jabatan"
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    value={formData.classroom ?? ''}
+                    label="Rombel"
+                    onChange={(e) => setFormData({ ...formData, classroom: e.target.value })}
                     required
                   >
-                    {positions.map((pos) => (
-                      <MenuItem key={pos} value={pos}>{pos}</MenuItem>
+                    {classrooms.map((cls) => (
+                      <MenuItem key={cls} value={cls}>Rombel {cls}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -698,18 +642,28 @@ const Employees = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Nomor Telepon"
+                  label="Nomor Telepon Siswa (Opsional)"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   sx={{ mb: 2 }}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Nomor Telepon Orang Tua"
+                  value={formData.parentPhone}
+                  onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
+                  required
+                  sx={{ mb: 2 }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Gender</InputLabel>
+                  <InputLabel>Jenis Kelamin</InputLabel>
                   <Select
-                    value={formData.gender}
-                    label="Gender"
+                    value={formData.gender ?? ''}
+                    label="Jenis Kelamin"
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                   >
                     <MenuItem value="male">Laki-laki</MenuItem>
@@ -720,7 +674,7 @@ const Employees = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Alamat"
+                  label="Alamat Rumah"
                   multiline
                   rows={3}
                   value={formData.address}
@@ -740,26 +694,29 @@ const Employees = () => {
               disabled={loading}
               startIcon={loading ? <CircularProgress size={16} /> : null}
             >
-              {editingEmployee ? 'Update' : 'Simpan'}
+              {editingStudent ? 'Update' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
 
       {/* Face Registration Dialog */}
-      <Dialog
-        open={faceRegistrationOpen}
-        onClose={() => setFaceRegistrationOpen(false)}
+      <Dialog 
+        open={faceRegistrationOpen} 
+        onClose={() => {
+          stopCamera();
+          setFaceRegistrationOpen(false);
+        }}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Pendaftaran Wajah - {currentEmployee?.full_name}
+        <DialogTitle sx={{ borderBottom: `1px solid ${colors.border}` }}>
+          Registrasi Wajah - {currentStudent?.full_name}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 3 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Ambil foto wajah pegawai untuk sistem pengenalan wajah. Minimal 3 foto untuk akurasi yang baik.
+              Ambil foto wajah siswa untuk sistem pengenalan wajah. Minimal 3 foto untuk akurasi yang baik.
             </Typography>
             
             <Grid container spacing={3}>
@@ -923,4 +880,4 @@ const Employees = () => {
   );
 };
 
-export default Employees;
+export default Students;

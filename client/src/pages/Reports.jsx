@@ -57,10 +57,10 @@ import { useTheme as useThemeContext } from '../contexts/ThemeContext';
 const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedGrade, setSelectedGrade] = useState('all');
   const [reportType, setReportType] = useState('attendance');
   const [attendanceData, setAttendanceData] = useState([]);
-  const [employeeData, setEmployeeData] = useState([]);
+  const [studentData, setStudentData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
   const { colors, mode } = useThemeContext();
   const cardStyle = {
@@ -70,12 +70,12 @@ const Reports = () => {
     boxShadow: 'none',
   };
 
-  const departments = ['all', 'IT', 'HR', 'Finance', 'Marketing', 'Sales', 'Operations'];
+  const grades = ['all', '1', '2', '3', '4', '5', '6'];
 
   useEffect(() => {
     loadReportData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedDepartment, reportType]);
+  }, [selectedDate, selectedGrade, reportType]);
 
   const formatDate = (date) => {
     return date.toISOString().split('T')[0]; // yyyy-mm-dd
@@ -91,34 +91,34 @@ const Reports = () => {
       }
 
       const dateParam = formatDate(selectedDate);
-      const deptParam = selectedDepartment;
+      const gradeParam = selectedGrade;
 
       // Fetch summary
       const summaryRes = await fetch(
-        `/api/reports/summary?date=${dateParam}&department=${deptParam}`,
+        `/api/reports/summary?date=${dateParam}&grade=${gradeParam}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const summary = await summaryRes.json();
 
       // Fetch attendance trend
       const attendanceRes = await fetch(
-        `/api/reports/attendance?end=${dateParam}&department=${deptParam}`,
+        `/api/reports/attendance?end=${dateParam}&grade=${gradeParam}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const attendance = await attendanceRes.json();
 
-      // Fetch employee details
-      const employeeRes = await fetch(
-        `/api/reports/employees?date=${dateParam}&department=${deptParam}`,
+      // Fetch student details
+      const studentRes = await fetch(
+        `/api/reports/employees?date=${dateParam}&grade=${gradeParam}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const employees = await employeeRes.json();
+      const students = await studentRes.json();
 
-      // Hitung rata-rata kehadiran dari employeeData
+      // Hitung rata-rata kehadiran dari studentData
       let avgRate = 0;
-      if (employees.length > 0) {
-        const totalRate = employees.reduce((acc, e) => acc + (e.attendanceRate || 0), 0);
-        avgRate = Math.round(totalRate / employees.length);
+      if (students.length > 0) {
+        const totalRate = students.reduce((acc, e) => acc + (e.attendanceRate || 0), 0);
+        avgRate = Math.round(totalRate / students.length);
       }
 
       setSummaryData({
@@ -126,7 +126,7 @@ const Reports = () => {
         averageAttendanceRate: avgRate || summary.averageAttendanceRate || 0,
       });
       setAttendanceData(attendance);
-      setEmployeeData(employees);
+      setStudentData(students);
     } catch (error) {
       console.error('Error loading report data:', error);
     } finally {
@@ -137,8 +137,8 @@ const Reports = () => {
   const handleExport = (format) => {
     try {
       const dateStr = formatDate(selectedDate);
-      const deptStr = selectedDepartment === 'all' ? 'Semua Departemen' : selectedDepartment;
-      const fileName = `Laporan_Absensi_${dateStr}_${deptStr.replace(/\s+/g, '_')}`;
+      const gradeStr = selectedGrade === 'all' ? 'Semua Kelas' : `Kelas ${selectedGrade}`;
+      const fileName = `Laporan_Absensi_${dateStr}_${gradeStr.replace(/\s+/g, '_')}`;
 
       if (format === 'pdf') {
         exportToPDF(fileName);
@@ -161,14 +161,14 @@ const Reports = () => {
       // Header
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('LAPORAN ABSENSI', pageWidth / 2, yPos, { align: 'center' });
+      doc.text('LAPORAN ABSENSI SISWA', pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
       doc.text(`Tanggal: ${formatDate(selectedDate)}`, margin, yPos);
       yPos += 6;
-      doc.text(`Departemen: ${selectedDepartment === 'all' ? 'Semua Departemen' : selectedDepartment}`, margin, yPos);
+      doc.text(`Kelas: ${selectedGrade === 'all' ? 'Semua Kelas' : `Kelas ${selectedGrade}`}`, margin, yPos);
       yPos += 6;
       doc.text(`Dibuat: ${new Date().toLocaleString('id-ID')}`, margin, yPos);
       yPos += 15;
@@ -215,22 +215,22 @@ const Reports = () => {
         yPos += 5;
       }
 
-      // Employee Data Table
-      if (employeeData.length > 0) {
+      // Student Data Table
+      if (studentData.length > 0) {
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Detail Kehadiran Pegawai', margin, yPos);
+        doc.text('Detail Kehadiran Siswa', margin, yPos);
         yPos += 10;
 
-        const tableData = employeeData.map((emp) => [
-          emp.name,
-          emp.department,
-          emp.presentDays || 0,
-          emp.absentDays || 0,
-          emp.lateDays || 0,
-          `${emp.attendanceRate || 0}%`,
-          emp.lastAttendance
-            ? new Date(emp.lastAttendance).toLocaleDateString('id-ID')
+        const tableData = studentData.map((stu) => [
+          stu.name,
+          stu.grade ? `Kelas ${stu.grade}` : (stu.department || '-'),
+          stu.presentDays || 0,
+          stu.absentDays || 0,
+          stu.lateDays || 0,
+          `${stu.attendanceRate || 0}%`,
+          stu.lastAttendance
+            ? new Date(stu.lastAttendance).toLocaleDateString('id-ID')
             : '-',
         ]);
 
@@ -238,7 +238,7 @@ const Reports = () => {
         if (typeof doc.autoTable === 'function') {
           doc.autoTable({
             startY: yPos,
-            head: [['Nama', 'Departemen', 'Hadir', 'Tidak Hadir', 'Terlambat', 'Tingkat Kehadiran', 'Terakhir Hadir']],
+            head: [['Nama', 'Kelas', 'Hadir', 'Tidak Hadir', 'Terlambat', 'Tingkat Kehadiran', 'Terakhir Hadir']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [25, 118, 210], textColor: 255, fontStyle: 'bold' },
@@ -250,7 +250,7 @@ const Reports = () => {
           // Fallback message
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text('Data pegawai terlalu banyak untuk ditampilkan dalam format sederhana.', margin, yPos);
+          doc.text('Data siswa terlalu banyak untuk ditampilkan dalam format sederhana.', margin, yPos);
           doc.text('Silakan gunakan export Excel untuk melihat detail lengkap.', margin, yPos + 7);
         }
       }
@@ -276,10 +276,10 @@ const Reports = () => {
 
     // Summary Sheet
     const summaryWS = XLSX.utils.aoa_to_sheet([
-      ['LAPORAN ABSENSI'],
+      ['LAPORAN ABSENSI SISWA'],
       [],
       ['Tanggal', formatDate(selectedDate)],
-      ['Departemen', selectedDepartment === 'all' ? 'Semua Departemen' : selectedDepartment],
+      ['Kelas', selectedGrade === 'all' ? 'Semua Kelas' : `Kelas ${selectedGrade}`],
       ['Dibuat', new Date().toLocaleString('id-ID')],
       [],
       ['RINGKASAN'],
@@ -294,28 +294,28 @@ const Reports = () => {
     summaryWS['!cols'] = [{ wch: 25 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(wb, summaryWS, 'Ringkasan');
 
-    // Employee Data Sheet
-    if (employeeData.length > 0) {
-      const employeeHeaders = [
-        ['LAPORAN KEHADIRAN PEGAWAI'],
+    // Student Data Sheet
+    if (studentData.length > 0) {
+      const studentHeaders = [
+        ['LAPORAN KEHADIRAN SISWA'],
         [],
-        ['Nama', 'Departemen', 'Hari Hadir', 'Hari Tidak Hadir', 'Hari Terlambat', 'Tingkat Kehadiran (%)', 'Terakhir Hadir'],
+        ['Nama', 'Kelas', 'Hari Hadir', 'Hari Tidak Hadir', 'Hari Terlambat', 'Tingkat Kehadiran (%)', 'Terakhir Hadir'],
       ];
 
-      const employeeRows = employeeData.map((emp) => [
-        emp.name,
-        emp.department,
-        emp.presentDays || 0,
-        emp.absentDays || 0,
-        emp.lateDays || 0,
-        emp.attendanceRate || 0,
-        emp.lastAttendance
-          ? new Date(emp.lastAttendance).toLocaleDateString('id-ID')
+      const studentRows = studentData.map((stu) => [
+        stu.name,
+        stu.grade ? `Kelas ${stu.grade}` : (stu.department || '-'),
+        stu.presentDays || 0,
+        stu.absentDays || 0,
+        stu.lateDays || 0,
+        stu.attendanceRate || 0,
+        stu.lastAttendance
+          ? new Date(stu.lastAttendance).toLocaleDateString('id-ID')
           : '-',
       ]);
 
-      const employeeWS = XLSX.utils.aoa_to_sheet([...employeeHeaders, ...employeeRows]);
-      employeeWS['!cols'] = [
+      const studentWS = XLSX.utils.aoa_to_sheet([...studentHeaders, ...studentRows]);
+      studentWS['!cols'] = [
         { wch: 25 },
         { wch: 15 },
         { wch: 12 },
@@ -324,7 +324,7 @@ const Reports = () => {
         { wch: 18 },
         { wch: 15 },
       ];
-      XLSX.utils.book_append_sheet(wb, employeeWS, 'Detail Pegawai');
+      XLSX.utils.book_append_sheet(wb, studentWS, 'Detail Siswa');
     }
 
     // Attendance Trend Sheet
@@ -406,22 +406,22 @@ const Reports = () => {
                     onChange={(e) => setReportType(e.target.value)}
                   >
                     <MenuItem value="attendance">Laporan Absensi</MenuItem>
-                    <MenuItem value="employee">Laporan Pegawai</MenuItem>
-                    <MenuItem value="department">Laporan Departemen</MenuItem>
+                    <MenuItem value="employee">Laporan Siswa</MenuItem>
+                    <MenuItem value="grade">Laporan Kelas</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Departemen</InputLabel>
+                  <InputLabel>Kelas</InputLabel>
                   <Select
-                    value={selectedDepartment}
-                    label="Departemen"
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    value={selectedGrade}
+                    label="Kelas"
+                    onChange={(e) => setSelectedGrade(e.target.value)}
                   >
-                    {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>
-                        {dept === 'all' ? 'Semua Departemen' : dept}
+                    {grades.map((grade) => (
+                      <MenuItem key={grade} value={grade}>
+                        {grade === 'all' ? 'Semua Kelas' : `Kelas ${grade}`}
                       </MenuItem>
                     ))}
                   </Select>
@@ -595,19 +595,19 @@ const Reports = () => {
           </Grid>
         </Grid>
 
-        {/* Employee Attendance Table */}
+        {/* Student Attendance Table */}
         <Card sx={{ ...cardStyle, mt: 4 }}>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Laporan Kehadiran Pegawai
+              Laporan Kehadiran Siswa
             </Typography>
 
             <TableContainer component={Paper} sx={{ borderRadius: 2, backgroundColor: colors.card, border: `1px solid ${colors.border}` }}>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: mode === 'dark' ? '#1f2937' : 'grey.50' }}>
-                    <TableCell>Pegawai</TableCell>
-                    <TableCell>Departemen</TableCell>
+                    <TableCell>Siswa</TableCell>
+                    <TableCell>Kelas</TableCell>
                     <TableCell>Hari Hadir</TableCell>
                     <TableCell>Hari Tidak Hadir</TableCell>
                     <TableCell>Hari Terlambat</TableCell>
@@ -623,7 +623,7 @@ const Reports = () => {
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
-                  ) : employeeData.length === 0 ? (
+                  ) : studentData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         <Typography color="text.secondary">
@@ -632,16 +632,16 @@ const Reports = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    employeeData.map((employee) => (
-                      <TableRow key={employee.id} hover>
+                    studentData.map((student) => (
+                      <TableRow key={student.id} hover>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {employee.name}
+                            {student.name}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={employee.department}
+                            label={student.grade ? `Kelas ${student.grade}` : '-'}
                             size="small"
                             variant="outlined"
                             sx={{ borderRadius: 1 }}
@@ -651,7 +651,7 @@ const Reports = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <CheckIcon sx={{ fontSize: 16, color: 'success.main' }} />
                             <Typography variant="body2">
-                              {employee.presentDays}
+                              {student.presentDays}
                             </Typography>
                           </Box>
                         </TableCell>
@@ -659,7 +659,7 @@ const Reports = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <ErrorIcon sx={{ fontSize: 16, color: 'error.main' }} />
                             <Typography variant="body2">
-                              {employee.absentDays}
+                              {student.absentDays}
                             </Typography>
                           </Box>
                         </TableCell>
@@ -667,39 +667,39 @@ const Reports = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <ScheduleIcon sx={{ fontSize: 16, color: 'warning.main' }} />
                             <Typography variant="body2">
-                              {employee.lateDays}
+                              {student.lateDays}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {employee.attendanceRate}%
+                              {student.attendanceRate}%
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              dari {employee.workingDays || '-'} hari kerja
+                              dari {student.workingDays || '-'} hari sekolah
                             </Typography>
                             <Chip
-                              label={getAttendanceRateText(employee.attendanceRate)}
+                              label={getAttendanceRateText(student.attendanceRate)}
                               size="small"
-                              color={getAttendanceRateColor(employee.attendanceRate)}
+                              color={getAttendanceRateColor(student.attendanceRate)}
                               sx={{ borderRadius: 1 }}
                             />
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            icon={employee.attendanceRate >= 80 ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                            label={employee.attendanceRate >= 80 ? 'Baik' : 'Perlu Perhatian'}
-                            color={employee.attendanceRate >= 80 ? 'success' : 'warning'}
+                            icon={student.attendanceRate >= 80 ? <TrendingUpIcon /> : <TrendingDownIcon />}
+                            label={student.attendanceRate >= 80 ? 'Baik' : 'Perlu Perhatian'}
+                            color={student.attendanceRate >= 80 ? 'success' : 'warning'}
                             size="small"
                             sx={{ borderRadius: 1 }}
                           />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {employee.lastAttendance
-                              ? new Date(employee.lastAttendance).toLocaleDateString('id-ID')
+                            {student.lastAttendance
+                              ? new Date(student.lastAttendance).toLocaleDateString('id-ID')
                               : '-'}
                           </Typography>
                         </TableCell>
@@ -718,15 +718,15 @@ const Reports = () => {
             <Card sx={cardStyle}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Departemen Terbaik
+                  Kelas Terbaik
                 </Typography>
                 <Alert severity="success" sx={{ mb: 2 }}>
                   <Typography variant="body2">
-                    <strong>{summaryData.topDepartment}</strong> memiliki tingkat kehadiran tertinggi
+                    <strong>Kelas {summaryData.topGrade}</strong> memiliki tingkat kehadiran tertinggi
                   </Typography>
                 </Alert>
                 <Typography variant="body2" color="text.secondary">
-                  Departemen ini menunjukkan konsistensi dalam kehadiran dan kedisiplinan pegawai.
+                  Kelas ini menunjukkan konsistensi dalam kehadiran dan kedisiplinan siswa.
                 </Typography>
               </CardContent>
             </Card>
@@ -736,15 +736,15 @@ const Reports = () => {
             <Card sx={cardStyle}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Departemen Perlu Perhatian
+                  Kelas Perlu Perhatian
                 </Typography>
                 <Alert severity="warning" sx={{ mb: 2 }}>
                   <Typography variant="body2">
-                    <strong>{summaryData.lowestDepartment}</strong> memiliki tingkat kehadiran terendah
+                    <strong>Kelas {summaryData.lowestGrade}</strong> memiliki tingkat kehadiran terendah
                   </Typography>
                 </Alert>
                 <Typography variant="body2" color="text.secondary">
-                  Perlu evaluasi dan tindakan untuk meningkatkan kedisiplinan pegawai.
+                  Perlu evaluasi dan tindakan untuk meningkatkan kedisiplinan siswa.
                 </Typography>
               </CardContent>
             </Card>

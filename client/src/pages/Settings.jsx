@@ -393,7 +393,7 @@ const Settings = () => {
               
               <TextField
                 fullWidth
-                label="Maksimal Foto Wajah per Pegawai"
+                label="Maksimal Foto Wajah per Siswa"
                 type="number"
                 inputProps={{ min: 3, max: 10 }}
                 value={settings.max_face_images || 5}

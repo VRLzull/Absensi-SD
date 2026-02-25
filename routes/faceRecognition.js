@@ -150,7 +150,7 @@ router.post('/verify', upload.single('face_image'), async (req, res) => {
     const comparison = await faceRecognitionService.compareFaces(
       inputDescriptor, 
       storedDescriptor, 
-      0.6 // threshold
+      0.55 // threshold diturunkan sedikit untuk meningkatkan keberhasilan login (dari 0.6)
     );
 
     if (comparison.isMatch) {
@@ -171,11 +171,11 @@ router.post('/verify', upload.single('face_image'), async (req, res) => {
     } else {
       res.status(401).json({
         success: false,
-        message: 'Verifikasi wajah gagal - wajah tidak cocok',
+        message: 'Verifikasi wajah gagal - wajah tidak cocok. Pastikan pencahayaan cukup dan wajah terlihat jelas.',
         data: {
           verified: false,
           confidence: comparison.similarity,
-          threshold: 0.6
+          threshold: 0.55
         }
       });
     }
@@ -253,9 +253,9 @@ router.post('/find-employee', (req, res, next) => {
     // Extract face descriptor from uploaded image
     const inputDescriptor = await faceRecognitionService.extractFaceDescriptor(faceImage.path);
 
-    // Get all registered faces from database
+    // Get all registered faces (SD: grade/classroom, bukan position/department)
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.full_name, e.position, e.department
+      SELECT ef.employee_id, ef.face_descriptor, e.full_name, e.grade, e.classroom
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -310,8 +310,8 @@ router.post('/find-employee', (req, res, next) => {
           bestMatch = {
             employee_id: face.employee_id,
             employee_name: face.full_name,
-            position: face.position,
-            department: face.department,
+            position: face.classroom ?? null,
+            department: face.grade != null ? String(face.grade) : null,
             similarity: similarityScore,
             confidence: similarityScore,
             distance: comparison.distance
@@ -542,13 +542,14 @@ router.post('/test', upload.single('face_image'), async (req, res) => {
 // Register face data for employee (multi-image) - Frontend integration
 router.post('/register', verifyToken, upload.array('face_images', 10), async (req, res) => {
   try {
-    const { employee_id } = req.body;
+    const { employee_id, student_id } = req.body;
+    const employeeCode = employee_id || student_id; // NIS - untuk kompatibilitas SD
     const files = req.files || [];
 
-    if (!employee_id) {
+    if (!employeeCode) {
       return res.status(400).json({ 
         success: false,
-        error: 'employee_id harus diisi' 
+        error: 'employee_id atau student_id (NIS) harus diisi' 
       });
     }
 
@@ -562,10 +563,10 @@ router.post('/register', verifyToken, upload.array('face_images', 10), async (re
     // Initialize service
     await faceRecognitionService.initialize();
 
-    // Find employee by employee_id (string code)
+    // Find employee/student by NIS (employee_id atau student_id)
     const [employee] = await pool.execute(`
-      SELECT id, full_name FROM employees WHERE employee_id = ? AND is_active = TRUE
-    `, [employee_id]);
+      SELECT id, full_name FROM employees WHERE (employee_id = ? OR student_id = ?) AND is_active = TRUE
+    `, [employeeCode, employeeCode]);
 
     if (employee.length === 0) {
       // Cleanup uploaded files
@@ -655,7 +656,7 @@ router.post('/register', verifyToken, upload.array('face_images', 10), async (re
       message: 'Pendaftaran wajah berhasil disimpan',
       data: {
         employee_id: numericEmployeeId,
-        employee_code: employee_id,
+        employee_code: employeeCode,
         employee_name: employee[0].full_name,
         descriptor_length: avgDescriptor.length,
         images_received: files.length,
@@ -709,9 +710,9 @@ router.post('/flutter-verify-embedding', async (req, res) => {
       });
     }
 
-    // Find employee by employee_id
+    // Find employee by employee_id (SD: grade/classroom)
     const [employee] = await pool.execute(`
-      SELECT e.id, e.full_name, e.position, e.department, ef.face_descriptor
+      SELECT e.id, e.full_name, e.grade, e.classroom, ef.face_descriptor
       FROM employees e
       LEFT JOIN employee_faces ef ON e.id = ef.employee_id
       WHERE e.employee_id = ? AND e.is_active = TRUE
@@ -750,8 +751,8 @@ router.post('/flutter-verify-embedding', async (req, res) => {
           data: {
             employee_id: employee[0].id,
             employee_name: employee[0].full_name,
-            position: employee[0].position,
-            department: employee[0].department,
+            position: employee[0].classroom ?? null,
+            department: employee[0].grade != null ? String(employee[0].grade) : null,
             confidence: comparison.similarity,
             similarity: comparison.similarity,
             verified: true
@@ -808,9 +809,9 @@ router.post('/flutter-find-employee-embedding', async (req, res) => {
       });
     }
 
-    // Get all registered faces from database
+    // Get all registered faces (SD: grade/classroom)
     const [allFaces] = await pool.execute(`
-      SELECT ef.employee_id, ef.face_descriptor, e.full_name, e.position, e.department, e.employee_id as employee_code
+      SELECT ef.employee_id, ef.face_descriptor, e.full_name, e.grade, e.classroom, e.employee_id as employee_code
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE e.is_active = TRUE
@@ -838,8 +839,8 @@ router.post('/flutter-find-employee-embedding', async (req, res) => {
           employee_id: bestMatch.employee_id,
           employee_code: bestMatch.employee_code,
           employee_name: bestMatch.full_name,
-          position: bestMatch.position,
-          department: bestMatch.department,
+          position: bestMatch.classroom ?? null,
+          department: bestMatch.grade != null ? String(bestMatch.grade) : null,
           similarity: bestMatch.similarity,
           confidence: bestMatch.similarity,
           verified: true

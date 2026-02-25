@@ -3,7 +3,7 @@ require('dotenv').config({ path: './config.env' });
 
 // Validate required environment variables
 function validateEnvironment() {
-  const required = ['NODE_ENV']; // Simplified for initial deploy
+  const required = ['JWT_SECRET', 'NODE_ENV'];
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
@@ -19,26 +19,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const fs = require('fs');
 const faceRecognitionService = require('./services/faceRecognitionService');
 
 const app = express();
-
-// Ensure upload directories exist
-const uploadDirs = [
-  'uploads',
-  'uploads/profiles',
-  'uploads/face-recognition',
-  'uploads/attendance'
-];
-uploadDirs.forEach(dir => {
-  const fullPath = path.join(__dirname, dir);
-  if (!fs.existsSync(fullPath)) {
-    fs.mkdirSync(fullPath, { recursive: true });
-    console.log(`📁 Created directory: ${dir}`);
-  }
-});
-
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
@@ -66,7 +49,10 @@ app.use((req, res, next) => {
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs - Increased for development
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: { error: 'Too many requests, please try again later.' }
 });
 app.use(limiter);
 
@@ -111,6 +97,7 @@ app.use('/models', express.static(path.join(__dirname, 'models')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/classes', require('./routes/classes'));
 app.use('/api/face-recognition', require('./routes/faceRecognition'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/dashboard', require('./routes/dashboard'));
@@ -149,30 +136,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler for API
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API Route not found' });
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
-
-// Serve Frontend Static Files in Production
-if (process.env.NODE_ENV === 'production') {
-  // Path to the frontend build folder
-  const frontendPath = path.join(__dirname, 'client/dist');
-  
-  // Serve static files from the React app
-  app.use(express.static(frontendPath));
-
-  // The "catchall" handler: for any request that doesn't
-  // match one above, send back React's index.html file.
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  });
-} else {
-  // Simple 404 for non-production
-  app.use('*', (req, res) => {
-    res.status(404).json({ error: 'Route not found' });
-  });
-}
 
 // Initialize face recognition service on server start
 async function initializeServices() {

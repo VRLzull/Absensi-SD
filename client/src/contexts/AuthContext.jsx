@@ -36,16 +36,28 @@ export const AuthProvider = ({ children }) => {
         }
       });
       
-      if (!response.ok) {
-        throw new Error('Token verification failed');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+        setError(null);
+      } else {
+        // Only logout on auth errors (401/403)
+        if (response.status === 401 || response.status === 403) {
+          console.warn('Token invalid or expired, logging out...');
+          logout();
+        } else {
+          // Server error or rate limit - don't logout, just keep loading state or show error
+          console.warn(`Token verification failed with status: ${response.status}`);
+          // Optionally keep the user logged in locally if it's just a temporary server issue
+          // But for security, we might want to at least set an error state
+          setError(`Gagal memverifikasi sesi (Status: ${response.status})`);
+        }
       }
-      
-      const data = await response.json();
-      setUser(data.user);
-      setError(null);
     } catch (error) {
-      console.error('Token verification failed:', error);
-      logout();
+      console.error('Token verification network error:', error);
+      // Don't logout on network errors (server down, offline, etc)
+      // logout(); 
+      setError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } finally {
       setLoading(false);
     }
@@ -66,11 +78,18 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify(credentials)
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error('Failed to parse login response:', e);
+        data = { error: `Server error: ${response.status} ${response.statusText}` };
+      }
+
       console.log('📥 Login response:', { ok: response.ok, data });
 
       if (!response.ok) {
-        const errorMessage = data.error || 'Login gagal';
+        const errorMessage = data.error || `Login gagal (${response.status})`;
         console.error('❌ Login failed:', errorMessage);
         setError(errorMessage);
         return { success: false, error: errorMessage };

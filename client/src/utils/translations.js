@@ -15,7 +15,7 @@ const translations = {
     
     // Navigation
     'nav.dashboard': 'Dashboard',
-    'nav.employees': 'Karyawan',
+    'nav.employees': 'Siswa',
     'nav.attendance': 'Absensi',
     'nav.reports': 'Laporan',
     'nav.settings': 'Pengaturan',
@@ -24,25 +24,29 @@ const translations = {
     
     // Dashboard
     'dashboard.title': 'Dashboard',
-    'dashboard.totalEmployees': 'Total Karyawan',
+    'dashboard.totalEmployees': 'Total Siswa',
     'dashboard.presentToday': 'Hadir Hari Ini',
     'dashboard.absentToday': 'Tidak Hadir',
     'dashboard.lateToday': 'Terlambat',
     
     // Employees
-    'employees.title': 'Data Karyawan',
-    'employees.add': 'Tambah Karyawan',
-    'employees.edit': 'Edit Karyawan',
-    'employees.delete': 'Hapus Karyawan',
-    'employees.name': 'Nama',
-    'employees.department': 'Departemen',
-    'employees.position': 'Jabatan',
+    'employees.title': 'Data Siswa',
+    'employees.add': 'Tambah Siswa',
+    'employees.edit': 'Edit Siswa',
+    'employees.delete': 'Hapus Siswa',
+    'employees.name': 'Nama Siswa',
+    'employees.department': 'Kelas',
+    'employees.position': 'Rombel',
+    'employees.id': 'NIS',
+    'employees.grade': 'Kelas',
+    'employees.classroom': 'Rombel',
+    'employees.parentPhone': 'No. Telp Orang Tua',
     
     // Attendance
     'attendance.title': 'Data Absensi',
     'attendance.checkIn': 'Check In',
     'attendance.checkOut': 'Check Out',
-    'attendance.totalEmployees': 'Total Karyawan',
+    'attendance.totalEmployees': 'Total Siswa',
     'attendance.present': 'Hadir',
     'attendance.late': 'Terlambat',
     'attendance.absent': 'Tidak Hadir',
@@ -59,6 +63,8 @@ const translations = {
     'profile.security': 'Keamanan & Tampilan',
     'profile.language': 'Bahasa',
     'profile.theme': 'Tema',
+    'profile.department': 'Kelas',
+    'profile.position': 'Rombel',
     
     // Settings
     'settings.title': 'Pengaturan Sistem',
@@ -87,7 +93,7 @@ const translations = {
     
     // Navigation
     'nav.dashboard': 'Dashboard',
-    'nav.employees': 'Employees',
+    'nav.employees': 'Students',
     'nav.attendance': 'Attendance',
     'nav.reports': 'Reports',
     'nav.settings': 'Settings',
@@ -96,25 +102,29 @@ const translations = {
     
     // Dashboard
     'dashboard.title': 'Dashboard',
-    'dashboard.totalEmployees': 'Total Employees',
+    'dashboard.totalEmployees': 'Total Students',
     'dashboard.presentToday': 'Present Today',
     'dashboard.absentToday': 'Absent',
     'dashboard.lateToday': 'Late',
     
     // Employees
-    'employees.title': 'Employee Data',
-    'employees.add': 'Add Employee',
-    'employees.edit': 'Edit Employee',
-    'employees.delete': 'Delete Employee',
-    'employees.name': 'Name',
-    'employees.department': 'Department',
-    'employees.position': 'Position',
+    'employees.title': 'Student Data',
+    'employees.add': 'Add Student',
+    'employees.edit': 'Edit Student',
+    'employees.delete': 'Delete Student',
+    'employees.name': 'Student Name',
+    'employees.department': 'Grade',
+    'employees.position': 'Classroom',
+    'employees.id': 'Student ID',
+    'employees.grade': 'Grade',
+    'employees.classroom': 'Classroom',
+    'employees.parentPhone': 'Parent Phone',
     
     // Attendance
     'attendance.title': 'Attendance Data',
     'attendance.checkIn': 'Check In',
     'attendance.checkOut': 'Check Out',
-    'attendance.totalEmployees': 'Total Employees',
+    'attendance.totalEmployees': 'Total Students',
     'attendance.present': 'Present',
     'attendance.late': 'Late',
     'attendance.absent': 'Absent',
@@ -131,6 +141,8 @@ const translations = {
     'profile.security': 'Security & Display',
     'profile.language': 'Language',
     'profile.theme': 'Theme',
+    'profile.department': 'Grade',
+    'profile.position': 'Classroom',
     
     // Settings
     'settings.title': 'System Settings',

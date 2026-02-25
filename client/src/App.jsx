@@ -6,10 +6,12 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Employees from './pages/Employees';
+import Students from './pages/Students';
 import Attendance from './pages/Attendance';
 import FaceRegistration from './pages/FaceRegistration';
 import Reports from './pages/Reports';
+import MonthlyRecap from './pages/MonthlyRecap';
+import ClassData from './pages/ClassData';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 
@@ -46,11 +48,11 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/employees"
+          path="/students"
           element={
             <ProtectedRoute>
               <Layout>
-                <Employees />
+                <Students />
               </Layout>
             </ProtectedRoute>
           }
@@ -81,6 +83,26 @@ const AppContent = () => {
             <ProtectedRoute>
               <Layout>
                 <Reports />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/monthly-recap"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MonthlyRecap />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classes"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ClassData />
               </Layout>
             </ProtectedRoute>
           }

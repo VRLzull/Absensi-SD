@@ -71,7 +71,7 @@ class FaceRecognitionService {
       // Add timeout to face detection (max 30 seconds)
       const detectionPromise = faceapi
         .detectSingleFace(image, new faceapi.TinyFaceDetectorOptions({
-          inputSize: 224, // Even smaller for faster processing
+          inputSize: 320, // Increased from 224 for better accuracy while maintaining speed
           scoreThreshold: 0.3 // More permissive for faster detection
         }))
         .withFaceLandmarks()
@@ -121,16 +121,47 @@ class FaceRecognitionService {
   }
 
   // ==========================
-  //  COMPARE USING PYTHON
+  //  COMPARE FACES (Recommended: use JS)
   // ==========================
-  async compareFaces(descriptor1, descriptor2, threshold = 0.6) {
+  async compareFaces(descriptor1, descriptor2, threshold = 0.55) {
+    try {
+      // Use the pure JS implementation for better performance and reliability
+      const result = this.compareDescriptors(descriptor1, descriptor2, {
+        metric: 'cosine',
+        threshold: threshold,
+        l2Normalize: true
+      });
+
+      return {
+        similarity: result.similarity,
+        isMatch: result.isMatch,
+        distance: result.distance
+      };
+    } catch (error) {
+      console.error('❌ Error comparing faces (JS):', error);
+      throw error;
+    }
+  }
+
+  // Legacy method for Python comparison if needed
+  async compareFacesPython(descriptor1, descriptor2, threshold = 0.6) {
     try {
       if (!Array.isArray(descriptor1) || !Array.isArray(descriptor2)) {
         throw new Error('Descriptors must be arrays');
       }
 
       const scriptPath = path.join(__dirname, '../python/compare_faces.py');
-      const py = spawn('python', [scriptPath, JSON.stringify(descriptor1), JSON.stringify(descriptor2)]);
+      // Fix: Python script expects stdin with a specific JSON format
+      const inputData = {
+        input_descriptor: descriptor1,
+        stored_faces: [{
+          employee_id: 0,
+          employee_name: 'comparison',
+          face_descriptor: JSON.stringify(descriptor2)
+        }]
+      };
+
+      const py = spawn('python', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
 
       return new Promise((resolve, reject) => {
         let output = '';
@@ -142,24 +173,34 @@ class FaceRecognitionService {
         py.on('close', (code) => {
           if (code !== 0 || error) {
             console.error('❌ Python error:', error);
-            return reject(error);
+            return reject(new Error(error));
           }
 
           try {
             const result = JSON.parse(output);
-            console.log(`📊 Python comparison: similarity=${result.similarity.toFixed(3)}, match=${result.is_match}`);
-            resolve({
-              similarity: result.similarity,
-              isMatch: result.is_match,
-              distance: result.distance ?? 0
-            });
+            if (result.success && result.match) {
+              resolve({
+                similarity: result.match.similarity,
+                isMatch: result.match.similarity >= threshold,
+                distance: result.match.distance
+              });
+            } else {
+              resolve({
+                similarity: 0,
+                isMatch: false,
+                distance: 100
+              });
+            }
           } catch (e) {
             reject(e);
           }
         });
+
+        py.stdin.write(JSON.stringify(inputData));
+        py.stdin.end();
       });
     } catch (error) {
-      console.error('❌ Error comparing faces (Node):', error);
+      console.error('❌ Error comparing faces (Python):', error);
       throw error;
     }
   }

@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Mobile as Flutter App
+    participant API as Node.js API
+    participant Face as Face-api.js
+    participant DB as MySQL
+
+    Mobile->>API: POST /check-in (Bawa Foto)
+    API->>Face: extractFaceDescriptor(image)
+    Face-->>API: Return 128-float numbers
+    API->>DB: SELECT * FROM employee_faces
+    DB-->>API: Return all registered faces
+    API->>Face: compareFaces(input, database)
+    
+    alt Wajah Cocok
+        Face-->>API: Match Found (Employee ID)
+        API->>DB: INSERT INTO attendance
+        API-->>Mobile: 200 OK (Berhasil Absen)
+    else Wajah Tidak Cocok
+        Face-->>API: No Match
+        API-->>Mobile: 401 Unauthorized
+    end

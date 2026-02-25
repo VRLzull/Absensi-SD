@@ -12,7 +12,7 @@ const router = express.Router();
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = 'uploads/employees';
+    const uploadDir = 'uploads/students';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'employee-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'student-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -53,7 +53,7 @@ const upload = multer({
   }
 });
 
-// Get all employees
+// Get all students
 router.get('/', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.execute(`
@@ -74,14 +74,14 @@ router.get('/', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get employees error:', error);
+    console.error('Get students error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });
   }
 });
 
-// Get employee by ID
+// Get student by ID
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -97,7 +97,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 
     if (rows.length === 0) {
       return res.status(404).json({ 
-        error: 'Pegawai tidak ditemukan' 
+        error: 'Siswa tidak ditemukan' 
       });
     }
 
@@ -107,41 +107,40 @@ router.get('/:id', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get employee error:', error);
+    console.error('Get student error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });
   }
 });
 
-// Create new employee
+// Create new student
 router.post('/', verifyToken, [
   // ✅ Input validation rules
-  body('employee_id')
-    .notEmpty().withMessage('Employee ID tidak boleh kosong')
-    .isLength({ min: 3, max: 20 }).withMessage('Employee ID harus 3-20 karakter')
-    .matches(/^[A-Za-z0-9_-]+$/).withMessage('Employee ID hanya boleh huruf, angka, underscore, dan dash'),
+  body('student_id')
+    .notEmpty().withMessage('NIS tidak boleh kosong')
+    .isLength({ min: 3, max: 20 }).withMessage('NIS harus 3-20 karakter')
+    .matches(/^[A-Za-z0-9_-]+$/).withMessage('NIS hanya boleh huruf, angka, underscore, dan dash'),
   
   body('full_name')
     .notEmpty().withMessage('Nama lengkap tidak boleh kosong')
-    .isLength({ min: 2, max: 100 }).withMessage('Nama lengkap harus 2-100 karakter')
-    .matches(/^[A-Za-z\s]+$/).withMessage('Nama lengkap hanya boleh huruf dan spasi'),
-  
-  body('email')
-    .optional()
-    .isEmail().withMessage('Format email tidak valid'),
+    .isLength({ min: 2, max: 100 }).withMessage('Nama lengkap harus 2-100 karakter'),
   
   body('phone')
     .optional()
     .matches(/^[0-9+\-\s()]+$/).withMessage('Format nomor telepon tidak valid'),
-  
-  body('position')
+
+  body('parent_phone')
     .optional()
-    .isLength({ max: 100 }).withMessage('Posisi maksimal 100 karakter'),
+    .matches(/^[0-9+\-\s()]+$/).withMessage('Format nomor telepon orang tua tidak valid'),
   
-  body('department')
+  body('grade')
     .optional()
-    .isLength({ max: 100 }).withMessage('Department maksimal 100 karakter'),
+    .isInt({ min: 1, max: 6 }).withMessage('Kelas harus antara 1-6'),
+  
+  body('classroom')
+    .optional()
+    .isLength({ max: 5 }).withMessage('Rombel maksimal 5 karakter'),
   
   body('gender')
     .optional()
@@ -166,52 +165,52 @@ router.post('/', verifyToken, [
 
   try {
     const { 
-      employee_id, 
+      student_id, 
       full_name, 
-      email, 
-      phone, 
-      position, 
-      department,
+      phone,
+      parent_phone,
+      grade, 
+      classroom,
       gender,
       address,
       hire_date
     } = req.body;
 
-    // Check if employee_id already exists
+    // Check if student_id already exists
     const [existing] = await pool.execute(`
-      SELECT id FROM employees WHERE employee_id = ?
-    `, [employee_id]);
+      SELECT id FROM employees WHERE student_id = ?
+    `, [student_id]);
 
     if (existing.length > 0) {
       return res.status(400).json({ 
-        error: 'Employee ID sudah ada' 
+        error: 'NIS sudah terdaftar' 
       });
     }
 
-    // Create employee
+    // Create student
     const [result] = await pool.execute(`
-      INSERT INTO employees (employee_id, full_name, email, phone, position, department, gender, address, hire_date)
+      INSERT INTO employees (student_id, full_name, phone, parent_phone, grade, classroom, gender, address, hire_date)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [employee_id, full_name, email, phone, position, department, gender, address, hire_date]);
+    `, [student_id, full_name, phone, parent_phone, grade, classroom, gender, address, hire_date]);
 
     res.status(201).json({
       success: true,
-      message: 'Pegawai berhasil ditambahkan',
+      message: 'Siswa berhasil ditambahkan',
       data: {
         id: result.insertId,
-        employee_id,
+        student_id,
         full_name
       }
     });
 
   } catch (error) {
-    console.error('Create employee error:', error);
+    console.error('Create student error:', error);
     
     // ✅ Enhanced error handling
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ 
         error: 'Data duplikat ditemukan',
-        message: 'Employee ID sudah ada dalam sistem'
+        message: 'NIS sudah ada dalam sistem'
       });
     }
     
@@ -236,29 +235,28 @@ router.post('/', verifyToken, [
   }
 });
 
-// Update employee
+// Update student
 router.put('/:id', verifyToken, [
   // ✅ Input validation rules
   body('full_name')
     .optional()
-    .isLength({ min: 2, max: 100 }).withMessage('Nama lengkap harus 2-100 karakter')
-    .matches(/^[A-Za-z\s]+$/).withMessage('Nama lengkap hanya boleh huruf dan spasi'),
-  
-  body('email')
-    .optional()
-    .isEmail().withMessage('Format email tidak valid'),
+    .isLength({ min: 2, max: 100 }).withMessage('Nama lengkap harus 2-100 karakter'),
   
   body('phone')
     .optional()
     .matches(/^[0-9+\-\s()]+$/).withMessage('Format nomor telepon tidak valid'),
-  
-  body('position')
+
+  body('parent_phone')
     .optional()
-    .isLength({ max: 100 }).withMessage('Posisi maksimal 100 karakter'),
+    .matches(/^[0-9+\-\s()]+$/).withMessage('Format nomor telepon orang tua tidak valid'),
   
-  body('department')
+  body('grade')
     .optional()
-    .isLength({ max: 100 }).withMessage('Department maksimal 100 karakter'),
+    .isInt({ min: 1, max: 6 }).withMessage('Kelas harus antara 1-6'),
+  
+  body('classroom')
+    .optional()
+    .isLength({ max: 5 }).withMessage('Rombel maksimal 5 karakter'),
   
   body('gender')
     .optional()
@@ -285,98 +283,98 @@ router.put('/:id', verifyToken, [
     const { id } = req.params;
     const { 
       full_name, 
-      email, 
-      phone, 
-      position, 
-      department,
+      phone,
+      parent_phone,
+      grade, 
+      classroom,
       gender,
       address,
       hire_date
     } = req.body;
 
-    // Check if employee exists
+    // Check if student exists
     const [existing] = await pool.execute(`
       SELECT id FROM employees WHERE id = ?
     `, [id]);
 
     if (existing.length === 0) {
       return res.status(404).json({ 
-        error: 'Pegawai tidak ditemukan' 
+        error: 'Siswa tidak ditemukan' 
       });
     }
 
-    // Update employee
+    // Update student
     await pool.execute(`
       UPDATE employees 
-      SET full_name = ?, email = ?, phone = ?, position = ?, department = ?, 
+      SET full_name = ?, phone = ?, parent_phone = ?, grade = ?, classroom = ?, 
           gender = ?, address = ?, hire_date = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [full_name, email, phone, position, department, gender, address, hire_date, id]);
+    `, [full_name, phone, parent_phone, grade, classroom, gender, address, hire_date, id]);
 
     res.json({
       success: true,
-      message: 'Data pegawai berhasil diupdate'
+      message: 'Data siswa berhasil diupdate'
     });
 
   } catch (error) {
-    console.error('Update employee error:', error);
+    console.error('Update student error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });
   }
 });
 
-// Delete employee
+// Delete student
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if employee exists
+    // Check if student exists
     const [existing] = await pool.execute(`
-      SELECT employee_id, full_name FROM employees WHERE id = ?
+      SELECT student_id, full_name FROM employees WHERE id = ?
     `, [id]);
 
     if (existing.length === 0) {
       return res.status(404).json({ 
-        error: 'Pegawai tidak ditemukan' 
+        error: 'Siswa tidak ditemukan' 
       });
     }
 
-    // Check if employee has attendance records
+    // Check if student has attendance records
     const [attendanceCount] = await pool.execute(`
       SELECT COUNT(*) as count FROM attendance WHERE employee_id = ?
     `, [id]);
 
     if (attendanceCount[0].count > 0) {
       return res.status(400).json({ 
-        error: 'Pegawai tidak dapat dihapus karena memiliki data absensi' 
+        error: 'Siswa tidak dapat dihapus karena memiliki data absensi' 
       });
     }
 
-    // Delete employee faces
+    // Delete student faces
     await pool.execute(`
       DELETE FROM employee_faces WHERE employee_id = ?
     `, [id]);
 
-    // Delete employee
+    // Delete student
     await pool.execute(`
       DELETE FROM employees WHERE id = ?
     `, [id]);
 
     res.json({
       success: true,
-      message: 'Pegawai berhasil dihapus'
+      message: 'Siswa berhasil dihapus'
     });
 
   } catch (error) {
-    console.error('Delete employee error:', error);
+    console.error('Delete student error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });
   }
 });
 
-// Upload employee photo
+// Upload student photo
 router.post('/:id/photo', verifyToken, upload.single('photo'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -388,18 +386,18 @@ router.post('/:id/photo', verifyToken, upload.single('photo'), async (req, res) 
       });
     }
 
-    // Check if employee exists
+    // Check if student exists
     const [employee] = await pool.execute(`
       SELECT id, full_name FROM employees WHERE id = ? AND is_active = TRUE
     `, [id]);
 
     if (employee.length === 0) {
       return res.status(404).json({ 
-        error: 'Pegawai tidak ditemukan' 
+        error: 'Siswa tidak ditemukan' 
       });
     }
 
-    // Update employee photo
+    // Update student photo
     await pool.execute(`
       UPDATE employees 
       SET photo_path = ?, updated_at = CURRENT_TIMESTAMP
@@ -408,7 +406,7 @@ router.post('/:id/photo', verifyToken, upload.single('photo'), async (req, res) 
 
     res.json({
       success: true,
-      message: 'Foto pegawai berhasil diupload',
+      message: 'Foto siswa berhasil diupload',
       data: {
         photo_path: photo.filename
       }
@@ -428,7 +426,7 @@ router.post('/:id/photo', verifyToken, upload.single('photo'), async (req, res) 
   }
 });
 
-// Register face for employee - NEW ENDPOINT
+// Register face for student - NEW ENDPOINT
 router.post('/:id/face', verifyToken, upload.single('face_image'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -440,14 +438,14 @@ router.post('/:id/face', verifyToken, upload.single('face_image'), async (req, r
       });
     }
 
-    // Check if employee exists
+    // Check if student exists
     const [employee] = await pool.execute(`
       SELECT id, full_name FROM employees WHERE id = ? AND is_active = TRUE
     `, [id]);
 
     if (employee.length === 0) {
       return res.status(404).json({ 
-        error: 'Pegawai tidak ditemukan' 
+        error: 'Siswa tidak ditemukan' 
       });
     }
 
@@ -457,7 +455,7 @@ router.post('/:id/face', verifyToken, upload.single('face_image'), async (req, r
     // Extract face descriptor
     const faceDescriptor = await faceRecognitionService.extractFaceDescriptor(faceImage.path);
 
-    // Check if employee already has face data
+    // Check if student already has face data
     const [existingFace] = await pool.execute(`
       SELECT id FROM employee_faces WHERE employee_id = ?
     `, [id]);
@@ -503,13 +501,13 @@ router.post('/:id/face', verifyToken, upload.single('face_image'), async (req, r
   }
 });
 
-// Get employee face data
+// Get student face data
 router.get('/:id/face', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
     const [rows] = await pool.execute(`
-      SELECT ef.*, e.full_name, e.employee_id
+      SELECT ef.*, e.full_name, e.student_id
       FROM employee_faces ef
       JOIN employees e ON ef.employee_id = e.id
       WHERE ef.employee_id = ?
@@ -521,14 +519,14 @@ router.get('/:id/face', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get employee face error:', error);
+    console.error('Get student face error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });
   }
 });
 
-// Delete employee face data
+// Delete student face data
 router.delete('/:id/face/:faceId', verifyToken, async (req, res) => {
   try {
     const { id, faceId } = req.params;
@@ -573,7 +571,7 @@ router.delete('/:id/face/:faceId', verifyToken, async (req, res) => {
   }
 });
 
-// Get employee attendance history
+// Get student attendance history
 router.get('/:id/attendance', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -618,7 +616,7 @@ router.get('/:id/attendance', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get employee attendance error:', error);
+    console.error('Get student attendance error:', error);
     res.status(500).json({ 
       error: 'Terjadi kesalahan pada server' 
     });

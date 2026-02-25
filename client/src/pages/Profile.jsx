@@ -446,7 +446,7 @@ const Profile = () => {
                     {user.full_name || 'User Name'}
                   </Typography>
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-                    {user.position || 'Position'} • {user.department || 'Department'}
+                    {user.position || t('profile.position')} • {user.department || t('profile.department')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {user.email || 'email@example.com'}
@@ -459,7 +459,7 @@ const Profile = () => {
                       size="small"
                     />
                     <Chip
-                      label={`ID: ${user.employee_id || user.employeeId || 'N/A'}`}
+                      label={`ID: ${user.student_id || user.studentId || user.employee_id || user.employeeId || 'N/A'}`}
                       variant="outlined"
                       size="small"
                     />
@@ -527,7 +527,7 @@ const Profile = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Departemen"
+                    label={t('profile.department')}
                     value={profileData.department}
                     onChange={(e) => handleProfileChange('department', e.target.value)}
                     disabled={!editing}
@@ -538,7 +538,7 @@ const Profile = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Jabatan"
+                    label={t('profile.position')}
                     value={profileData.position}
                     onChange={(e) => handleProfileChange('position', e.target.value)}
                     disabled={!editing}

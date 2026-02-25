@@ -5,7 +5,7 @@ const pool = require("../config/database");
 // -------------------- API STATS --------------------
 router.get("/stats", async (req, res) => {
   try {
-    const [totalEmployees] = await pool.query(
+    const [totalStudents] = await pool.query(
       "SELECT COUNT(*) AS total FROM employees"
     );
 
@@ -18,10 +18,10 @@ router.get("/stats", async (req, res) => {
     );
 
     const absentToday =
-      totalEmployees[0].total - presentToday[0].total;
+      totalStudents[0].total - presentToday[0].total;
 
     res.json({
-      totalEmployees: totalEmployees[0].total,
+      totalStudents: totalStudents[0].total,
       presentToday: presentToday[0].total,
       absentToday,
       lateToday: lateToday[0].total,
@@ -37,7 +37,7 @@ router.get("/stats", async (req, res) => {
 router.get("/recent", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT a.id, e.full_name, e.department, a.check_in, a.status
+      `SELECT a.id, e.full_name, e.grade, e.classroom, a.check_in, a.status
        FROM attendance a
        JOIN employees e ON a.employee_id = e.id
        ORDER BY a.check_in DESC
@@ -53,11 +53,11 @@ router.get("/recent", async (req, res) => {
 // -------------------- API WEEKLY CHART --------------------
 router.get("/chart", async (req, res) => {
     try {
-      // ambil total karyawan
-      const [totalEmployees] = await pool.query(
+      // ambil total siswa
+      const [totalStudents] = await pool.query(
         "SELECT COUNT(*) AS total FROM employees"
       );
-      const total = totalEmployees[0].total;
+      const total = totalStudents[0].total;
   
       // ambil data absensi 7 hari terakhir
       const [rows] = await pool.query(
@@ -73,7 +73,9 @@ router.get("/chart", async (req, res) => {
       // bikin map data biar gampang dicari per tanggal
       const map = {};
       rows.forEach(r => {
-        map[r.date.toISOString().split("T")[0]] = r;
+        const d = new Date(r.date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        map[key] = r;
       });
   
       // generate 7 hari terakhir (dari 6 hari lalu sampai hari ini)
@@ -81,7 +83,7 @@ router.get("/chart", async (req, res) => {
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().split("T")[0];
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   
         const r = map[key] || { present: 0, late: 0 };
         const hadir = r.present + r.late;
@@ -101,6 +103,25 @@ router.get("/chart", async (req, res) => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
-  
 
+// -------------------- API ABSENT STUDENTS (BELUM ABSEN) --------------------
+router.get("/absent", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT e.id, e.full_name, e.grade, e.classroom, e.student_id
+      FROM employees e
+      WHERE e.id NOT IN (
+        SELECT employee_id 
+        FROM attendance 
+        WHERE DATE(check_in) = CURDATE()
+      )
+      ORDER BY e.grade ASC, e.classroom ASC, e.full_name ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching absent students:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+  
 module.exports = router;

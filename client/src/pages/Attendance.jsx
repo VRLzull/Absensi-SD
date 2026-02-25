@@ -52,11 +52,11 @@ import 'jspdf-autotable';
 
 const Attendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
-  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterDepartment, setFilterDepartment] = useState('all');
+  const [filterGrade, setFilterGrade] = useState('all');
   const [filterRange, setFilterRange] = useState('date');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -67,21 +67,21 @@ const Attendance = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, attendance: null });
   const [openExportDialog, setOpenExportDialog] = useState(false);
   const [exportFilters, setExportFilters] = useState({
-    employeeName: '',
+    studentName: '',
     year: new Date().getFullYear().toString(),
     month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
     exportMethod: 'pdf'
   });
   const [exportLoading, setExportLoading] = useState(false);
 
-  const departments = ['IT', 'HR', 'Finance', 'Marketing', 'Sales', 'Operations'];
+  const grades = [1, 2, 3, 4, 5, 6];
 
   useEffect(() => {
     loadAttendanceData();
-    loadTotalEmployees();
+    loadTotalStudents();
   }, [filterRange, selectedDate]);
 
-  const loadTotalEmployees = async () => {
+  const loadTotalStudents = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -89,15 +89,15 @@ const Attendance = () => {
         return;
       }
 
-      // Ambil jumlah total pegawai dari endpoint employees
+      // Ambil jumlah total siswa dari endpoint students
       const res = await axios.get('http://localhost:5000/api/employees', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const employees = res.data.data || [];
-      setTotalEmployees(employees.length);
+      const students = res.data.data || [];
+      setTotalStudents(students.length);
     } catch (error) {
-      console.error('Error loading total employees:', error);
+      console.error('Error loading total students:', error);
     }
   };
 
@@ -163,9 +163,9 @@ const Attendance = () => {
         return {
           id: item.id,
           name: item.full_name,
-          employeeId: item.emp_id || item.employee_id,
-          department: item.department,
-          position: item.position,
+          studentId: item.student_id || item.employee_id,
+          grade: item.grade,
+          classroom: item.classroom,
           checkIn: item.check_in,
           checkOut: item.check_out,
           status: item.status,
@@ -249,31 +249,31 @@ const Attendance = () => {
 
   const filteredAttendance = rangeFilteredAttendance.filter(attendance => {
     const matchesSearch = attendance.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         attendance.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+                         attendance.studentId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || attendance.status === filterStatus;
-    const matchesDepartment = filterDepartment === 'all' || attendance.department === filterDepartment;
+    const matchesGrade = filterGrade === 'all' || attendance.grade?.toString() === filterGrade.toString();
     
-    return matchesSearch && matchesStatus && matchesDepartment;
+    return matchesSearch && matchesStatus && matchesGrade;
   });
 
   const getStats = () => {
-    const statusByEmployee = new Map();
+    const statusByStudent = new Map();
     filteredAttendance.forEach((att) => {
-      const key = att.employeeId || att.id;
-      if (!statusByEmployee.has(key)) {
-        statusByEmployee.set(key, att.status || 'unknown');
+      const key = att.studentId || att.id;
+      if (!statusByStudent.has(key)) {
+        statusByStudent.set(key, att.status || 'unknown');
       }
     });
 
-    const uniqueStatuses = Array.from(statusByEmployee.values());
+    const uniqueStatuses = Array.from(statusByStudent.values());
     const present = uniqueStatuses.filter((status) => status === 'present').length;
     const late = uniqueStatuses.filter((status) => status === 'late').length;
     const recordedAbsent = uniqueStatuses.filter((status) => status === 'absent').length;
 
-    const calculatedAbsent = totalEmployees - (present + late);
+    const calculatedAbsent = totalStudents - (present + late);
     const absent = Math.max(recordedAbsent, calculatedAbsent > 0 ? calculatedAbsent : 0);
     
-    return { total: totalEmployees, present, late, absent };
+    return { total: totalStudents, present, late, absent };
   };
 
   const stats = getStats();
@@ -285,7 +285,7 @@ const Attendance = () => {
   const handleCloseExportDialog = () => {
     setOpenExportDialog(false);
     setExportFilters({
-      employeeName: '',
+      studentName: '',
       year: new Date().getFullYear().toString(),
       month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
       exportMethod: 'pdf'
@@ -306,7 +306,7 @@ const Attendance = () => {
         throw new Error('Token autentikasi tidak ditemukan');
       }
 
-      const { employeeName, year, month } = exportFilters;
+      const { studentName, year, month } = exportFilters;
       const startDate = `${year}-${month}-01`;
       const endDate = `${year}-${month}-${new Date(parseInt(year), parseInt(month), 0).getDate()}`;
 
@@ -339,19 +339,19 @@ const Attendance = () => {
         return checkInDate >= startDate && checkInDate <= endDate;
       });
 
-      // Filter by employee name if provided
-      if (employeeName && employeeName.trim()) {
+      // Filter by student name if provided
+      if (studentName && studentName.trim()) {
         data = data.filter(item => 
-          item.full_name?.toLowerCase().includes(employeeName.toLowerCase())
+          item.full_name?.toLowerCase().includes(studentName.toLowerCase())
         );
       }
 
       return data.map(item => ({
         id: item.id,
         name: item.full_name,
-        employeeId: item.emp_id || item.employee_id,
-        department: item.department,
-        position: item.position,
+        studentId: item.student_id || item.employee_id,
+        grade: item.grade,
+        classroom: item.classroom,
         checkIn: item.check_in,
         checkOut: item.check_out,
         status: item.status,
@@ -416,10 +416,10 @@ const Attendance = () => {
       doc.setFontSize(24);
       doc.text('🕐', pageWidth / 2, 25, { align: 'center' });
       
-      // Nama instansi (placeholder)
+      // Nama instansi (SD School)
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('[Ubah Nama Instansi]', pageWidth / 2, 40, { align: 'center' });
+      doc.text('SD NEGERI [Ubah Nama Sekolah]', pageWidth / 2, 40, { align: 'center' });
       
       yPos = 60;
 
@@ -455,6 +455,7 @@ const Attendance = () => {
         return [
           index + 1,
           item.name || '-',
+          `Kelas ${item.grade}${item.classroom}`,
           tanggalAbsen,
           jamDatang,
           jamPulang,
@@ -471,7 +472,7 @@ const Attendance = () => {
         // @ts-ignore
         doc.autoTable({
           startY: yPos,
-          head: [['No', 'Nama Pegawai', 'Tanggal Absen', 'Jam Datang', 'Jam Pulang', 'Status Kehadiran']],
+          head: [['No', 'Nama Siswa', 'Kelas', 'Tanggal Absen', 'Jam Datang', 'Jam Pulang', 'Status']],
           body: tableData,
           theme: 'grid',
           headStyles: { 
@@ -492,12 +493,13 @@ const Attendance = () => {
             cellWidth: 'wrap'
           },
           columnStyles: {
-            0: { cellWidth: 15, halign: 'center' },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 35, halign: 'center' },
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 20, halign: 'center' },
             3: { cellWidth: 30, halign: 'center' },
-            4: { cellWidth: 30, halign: 'center' },
-            5: { cellWidth: 35, halign: 'center' },
+            4: { cellWidth: 25, halign: 'center' },
+            5: { cellWidth: 25, halign: 'center' },
+            6: { cellWidth: 30, halign: 'center' },
           },
         });
         // @ts-ignore
@@ -636,14 +638,15 @@ const Attendance = () => {
     // Attendance Data Sheet
     if (data.length > 0) {
       const headers = [
-        ['DATA ABSENSI PEGAWAI'],
+        ['DATA ABSENSI SISWA'],
         [],
-        ['No', 'Nama Pegawai', 'Tanggal Absen', 'Jam Datang', 'Jam Pulang', 'Status Kehadiran'],
+        ['No', 'Nama Siswa', 'Kelas', 'Tanggal Absen', 'Jam Datang', 'Jam Pulang', 'Status'],
       ];
 
       const rows = data.map((att, index) => [
         index + 1,
         att.name || '-',
+        `Kelas ${att.grade}${att.classroom}`,
         att.checkIn ? new Date(att.checkIn).toLocaleDateString('id-ID') : '-',
         att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
         att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
@@ -654,6 +657,7 @@ const Attendance = () => {
       dataWS['!cols'] = [
         { wch: 5 },
         { wch: 30 },
+        { wch: 15 },
         { wch: 15 },
         { wch: 12 },
         { wch: 12 },
@@ -834,20 +838,20 @@ const Attendance = () => {
           <div class="header">
             <div class="header-icon">🕒</div>
             <div class="header-text">
-              <h1>Detail Absensi Karyawan</h1>
-              <span>[Ubah Nama Instansi]</span>
+              <h1>Detail Absensi Siswa</h1>
+              <span>SD NEGERI [Ubah Nama Sekolah]</span>
             </div>
           </div>
           <div class="body">
             <div class="section-desc">
-              Berikut adalah catatan kehadiran yang tersimpan pada sistem untuk pegawai berikut:
+              Berikut adalah catatan kehadiran yang tersimpan pada sistem untuk siswa berikut:
             </div>
             <div class="section-title">Informasi Umum</div>
             <table>
-              <tr><th>Nama Pegawai</th><td>${attendance.name || '-'}</td></tr>
-              <tr><th>Employee ID</th><td>${attendance.employeeId || '-'}</td></tr>
-              <tr><th>Departemen</th><td>${attendance.department || '-'}</td></tr>
-              <tr><th>Posisi</th><td>${attendance.position || '-'}</td></tr>
+              <tr><th>Nama Siswa</th><td>${attendance.name || '-'}</td></tr>
+              <tr><th>NIS</th><td>${attendance.studentId || '-'}</td></tr>
+              <tr><th>Kelas</th><td>${attendance.grade || '-'}</td></tr>
+              <tr><th>Rombel</th><td>${attendance.classroom || '-'}</td></tr>
             </table>
             <div class="section-title">Detail Kehadiran</div>
             <table>
@@ -856,7 +860,6 @@ const Attendance = () => {
               <tr><th>Check Out</th><td>${formatTime(attendance.checkOut)}</td></tr>
               <tr><th>Status Kehadiran</th><td>${getStatusLabel(attendance.status)}</td></tr>
               <tr><th>Total Jam</th><td>${totalJam}</td></tr>
-              <tr><th>Lembur</th><td>${lembur}</td></tr>
               <tr><th>Keterangan</th><td>${attendance.notes || '-'}</td></tr>
             </table>
             <div class="footer">
@@ -864,7 +867,7 @@ const Attendance = () => {
               <div>Lokasi Absen: ${attendance.location || 'Lokasi tidak diketahui'}</div>
             </div>
             <div class="signature">
-              Atas Nama.<br />
+              Kepala Sekolah.<br />
               <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
             </div>
           </div>
@@ -930,7 +933,7 @@ const Attendance = () => {
               Data Absensi
             </Typography>
             <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>
-              Monitor kehadiran karyawan dan catatan waktu kerja
+              Monitor kehadiran siswa dan catatan waktu sekolah
             </Typography>
           </Box>
           <Button
@@ -967,7 +970,7 @@ const Attendance = () => {
                   {stats.total}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Total Karyawan
+                  Total Siswa
                 </Typography>
               </CardContent>
             </Card>
@@ -1113,7 +1116,7 @@ const Attendance = () => {
               <Grid item xs={12} md={filterRange === 'date' || filterRange === 'month' ? 3 : 4}>
                 <TextField
                   fullWidth
-                  placeholder="Cari nama atau ID karyawan..."
+                  placeholder="Cari nama atau NIS siswa..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
@@ -1151,16 +1154,16 @@ const Attendance = () => {
               </Grid>
               <Grid item xs={12} md={2}>
                 <FormControl fullWidth>
-                  <InputLabel>Departemen</InputLabel>
+                  <InputLabel>Kelas</InputLabel>
                   <Select
-                    value={filterDepartment}
-                    onChange={(e) => setFilterDepartment(e.target.value)}
-                    label="Departemen"
+                    value={filterGrade}
+                    onChange={(e) => setFilterGrade(e.target.value)}
+                    label="Kelas"
                     sx={{ borderRadius: 2 }}
                   >
-                    <MenuItem value="all">Semua Dept</MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                    <MenuItem value="all">Semua Kelas</MenuItem>
+                    {grades.map((grade) => (
+                      <MenuItem key={grade} value={grade.toString()}>Kelas {grade}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -1198,8 +1201,8 @@ const Attendance = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Karyawan</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Departemen</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Siswa</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Kelas</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Check In</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Check Out</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>Total Jam</TableCell>
@@ -1226,14 +1229,14 @@ const Attendance = () => {
                             {attendance.name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {attendance.employeeId}
+                            NIS: {attendance.studentId}
                           </Typography>
                         </Box>
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={attendance.department} 
+                        label={`Kelas ${attendance.grade}${attendance.classroom}`} 
                         size="small"
                         sx={{ 
                           bgcolor: '#f1f5f9',
@@ -1338,18 +1341,18 @@ const Attendance = () => {
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Employee ID
+                    NIS
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {selectedAttendance.employeeId}
+                    {selectedAttendance.studentId}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Departemen
+                    Kelas
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {selectedAttendance.department}
+                    {`Kelas ${selectedAttendance.grade}${selectedAttendance.classroom}`}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -1432,13 +1435,13 @@ const Attendance = () => {
           </DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              {/* Nama Pegawai */}
+              {/* Nama Siswa */}
               <TextField
                 fullWidth
-                label="Nama Pegawai"
-                placeholder="Nama Pegawai"
-                value={exportFilters.employeeName}
-                onChange={(e) => handleExportFilterChange('employeeName', e.target.value)}
+                label="Nama Siswa"
+                placeholder="Nama Siswa"
+                value={exportFilters.studentName}
+                onChange={(e) => handleExportFilterChange('studentName', e.target.value)}
                 helperText="*Kosongkan bagian ini jika ingin menampilkan semua"
                 sx={{ borderRadius: 2 }}
               />
