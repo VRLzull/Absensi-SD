@@ -25,9 +25,9 @@ echo.
 echo Creating database and tables...
 
 if "%mysql_password%"=="" (
-    mysql -u root < database/schema.sql
+    mysql -u root < database/absensi--SD.sql
 ) else (
-    mysql -u root -p%mysql_password% < database/schema.sql
+    mysql -u root -p%mysql_password% < database/absensi--SD.sql
 )
 
 if %errorlevel% neq 0 (
@@ -47,11 +47,7 @@ echo   Database setup completed successfully!
 echo ========================================
 echo.
 echo Database: ljn_db
-echo Tables created:
-echo   - admin_users
-echo   - employees
-echo   - employee_faces
-echo   - attendance
+echo Tables created (lihat definisi di absensi--SD.sql)
 echo.
 echo Default admin user:
 echo   Username: admin
